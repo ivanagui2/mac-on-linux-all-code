@@ -1,0 +1,36 @@
+#!/bin/sh
+
+unset MDIR
+
+[ $# = 0 ] && {
+    [ -d ../mol ] && MDIR=../mol
+    [ -d ../mol-work ] && MDIR="../mol-work"
+}
+test "$1" && MDIR="$1"
+
+[ ! "$MDIR" -o ! -d "$MDIR" ] && {
+    echo "Usage: setup_links path_to_mol_source"
+    exit 1;
+}
+
+rm -rf osiinclude src/osiinclude
+mkdir src/osiinclude
+
+unset PREFIX
+echo "$MDIR" | grep -q '^/' || PREFIX="../../"
+
+MDIR="$PREFIX$MDIR/src"
+
+ln -s "$MDIR/drivers/disk/include/ablk_sh.h" src/osiinclude/
+ln -s "$MDIR/drivers/disk/include/scsi_sh.h" src/osiinclude/
+ln -s "$MDIR/drivers/include/mouse_sh.h" src/osiinclude/
+ln -s "$MDIR/drivers/net/enet2_sh.h" src/osiinclude/
+ln -s "$MDIR/include/osi_calls.h" src/osiinclude/
+ln -s "$MDIR/shared/osi.h" src/osiinclude/
+ln -s "$MDIR/drivers/include/sound_sh.h" src/osiinclude/
+
+cd src/osiinclude/
+test -f osi_calls.h || {
+    echo "Error: $MDIR/ is not the Mac-on-Linux source directory"
+}
+

@@ -1,0 +1,12 @@
+
+To build the OS X drivers for Mac-on-Linux, do the following:
+
+	./setup_links mol_source
+	make
+	make target
+
+The resulting binary files can be found in the target
+directory.
+
+
+
