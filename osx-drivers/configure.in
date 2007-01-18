@@ -1,6 +1,6 @@
 # -*- sh -*-
 
-AC_INIT(src/osiinclude/osi_calls.h)
+AC_INIT(src/include/osi/osi_calls.h)
 #AC_CONFIG_AUX_DIR(buildtools)
 #AC_CANONICAL_HOST
 

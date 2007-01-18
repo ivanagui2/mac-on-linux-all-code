@@ -1,12 +1,14 @@
+To build the OS X drivers for Mac-on-Linux, you will need:
+XCode
+OSX-10.2.8-SDK
+X11-SDK
 
-To build the OS X drivers for Mac-on-Linux, do the following:
+The drivers can only be built on OSX.
 
-	./setup_links mol_source
+	
+Once the environment is configured:
+
 	make
 	make target
 
-The resulting binary files can be found in the target
-directory.
-
-
-
+The resulting binary files can be found in the target directory.

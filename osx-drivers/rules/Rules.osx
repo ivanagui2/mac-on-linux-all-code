@@ -4,7 +4,7 @@ CFLAGS		+= $(KERN_CFLAGS)
 CXXFLAGS	+= $(KERN_CXXFLAGS)
 
 IDIRS		= -I. -I$(ARCHINCLUDES) -I./include -I$(top_srcdir)/src/include \
-		  -I$(top_srcdir)/src/osiinclude $(INCLUDES) -I-
+		  -I$(top_srcdir)/src/include/osi $(INCLUDES) -I-
 
 KFRAMEWORK	= -I/System/Library/Frameworks/Kernel.framework/Headers \
 		  -I/System/Library/Frameworks/Kernel.framework/Headers/bsd
