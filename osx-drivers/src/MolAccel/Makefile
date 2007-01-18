@@ -1,6 +1,9 @@
 
 include			../../rules/Makefile.top
 
+CFLAGS			+= -msoft_float
+CXXFLAGS		+= -msoft_float
+
 ifdef OSX_10_1
 KMODS			= MolAccel1
 else

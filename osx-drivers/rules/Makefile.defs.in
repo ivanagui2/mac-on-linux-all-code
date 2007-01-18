@@ -35,8 +35,11 @@ OSX_10_3	= @OSX_10_3@
 
 ifdef OSX_10_1
 CP_RH		= cp -r
-else
+endif
+ifdef OSX_10_2
 CP_RH		= cp -rH
+else
+CP_RH		= cp -RH
 endif
 
 ifndef OSX_10_3

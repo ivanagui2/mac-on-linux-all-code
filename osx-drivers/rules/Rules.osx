@@ -6,8 +6,8 @@ CXXFLAGS	+= $(KERN_CXXFLAGS)
 IDIRS		= -I. -I$(ARCHINCLUDES) -I./include -I$(top_srcdir)/src/include \
 		  -I$(top_srcdir)/src/include/osi $(INCLUDES) -I-
 
-KFRAMEWORK	= -I/System/Library/Frameworks/Kernel.framework/Headers \
-		  -I/System/Library/Frameworks/Kernel.framework/Headers/bsd
+KFRAMEWORK	= -I$(SDK_DIR)/System/Library/Frameworks/Kernel.framework/Headers \
+		  -I$(SDK_DIR)/System/Library/Frameworks/Kernel.framework/Headers/bsd
 
 COMMON_CFLAGS	= -DKERNEL -DKERNEL_PRIVATE -DDRIVER_PRIVATE -DAPPLE -DNeXT -D_BIG_ENDIAN \
 		  -D__KERNEL__ -D__darwin__ $(flags-y)
@@ -18,21 +18,18 @@ ASMFLAGS	+= -D__KERNEL__ -DKERNEL -D__darwin__ $(flags-y)
 
 #### 10.1 ##################################
 ifdef OSX_10_1
-KERN_CFLAGS	= -fno-common -msoft-float -mlong-branch \
-		  -finline -fno-keep-inline-functions -force_cpusubtype_ALL -static \
-		  -g -nostdinc $(KFRAMEWORK) $(COMMON_CFLAGS)
+KERN_CFLAGS	= -fno-common -mlong-branch -finline -fno-keep-inline-functions \
+		  -force_cpusubtype_ALL -static -g -nostdinc $(KFRAMEWORK) \
+		  $(COMMON_CFLAGS)
 
 KERN_CXXFLAGS	= $(KERN_CFLAGS) -fpermissive -arch ppc -x c++ -fno-rtti \
-		  -fno-exceptions -fcheck-new \
-		  -fvtable-thunks -findirect-virtual-calls
+		  -fno-exceptions -fcheck-new -fvtable-thunks -findirect-virtual-calls
 
 #### 10.2 ##################################
 else
-KERN_CFLAGS	= -fno-builtin -fno-common -msoft-float \
-		  -force_cpusubtype_ALL -arch ppc -mlong-branch \
-		  -finline -fno-keep-inline-functions \
-		  -fmessage-length=0 -static \
-		  -g -nostdinc $(KFRAMEWORK) $(COMMON_CFLAGS)
+KERN_CFLAGS	= -fno-builtin -fno-common -force_cpusubtype_ALL -arch ppc 
+		  -mlong-branch -finline -fno-keep-inline-functions \
+		  -fmessage-length=0 -static -g -nostdinc $(KFRAMEWORK) $(COMMON_CFLAGS)
 
 KERN_CXXFLAGS	= $(KERN_CFLAGS) -x c++ -fapple-kext -fno-rtti \
 		  -fno-exceptions -fcheck-new

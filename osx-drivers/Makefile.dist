@@ -31,7 +31,7 @@ mkext:
 	for x in .kmods/* ; do \
 		$(CP_RH) "$$x" $(KEXTDIR)/ ; \
 	done
-	sudo chown -R root.wheel $(KEXTDIR)
+	sudo chown -R root:wheel $(KEXTDIR)
 	sudo find $(KEXTDIR) -type d -exec /bin/chmod 0755 '{}' \;
 	sudo find $(KEXTDIR) -type f -exec /bin/chmod 0644 '{}' \;
 	sudo mv $(KEXTDIR)/MolEnet.kext $(KEXTDIR)/MolAudioDevice.kext \
@@ -50,10 +50,18 @@ ifdef OSX_10_1
 else
 	@echo "Building $(MOLPKG)"
 	sudo rm -rf $(MOLPKG)
-	sudo chown -R root.wheel $(PACKAGEDIR)
-	sudo /Developer/Applications/PackageMaker.app/Contents/MacOS/PackageMaker \
-		-build -p $(MOLPKG) -f $(PACKAGEDIR) -i $(PKGDATA)/Info.plist \
-		-r $(PKGDATA)/Resources -d $(PKGDATA)/Description.plist ; \
+	sudo chown -R root:wheel $(PACKAGEDIR)
+	### Old location
+	test -f /Developer/Applications/PackageMaker.app/Contents/MacOS/PackageMaker && \
+		sudo /Developer/Applications/PackageMaker.app/Contents/MacOS/PackageMaker \
+			-build -p $(MOLPKG) -f $(PACKAGEDIR) -i $(PKGDATA)/Info.plist \
+			-r $(PKGDATA)/Resources -d $(PKGDATA)/Description.plist ; \
+	### New location
+	test -f /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker && \
+		sudo /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker \
+			-build -p $(MOLPKG) -f $(PACKAGEDIR) -i $(PKGDATA)/Info.plist \
+			-r $(PKGDATA)/Resources -d $(PKGDATA)/Description.plist ; \
+
 	true
 	sudo rm -rf $(MOLPKG)/Contents/Resources/SCCS
 	sudo rm -rf $(PACKAGEDIR)
@@ -62,8 +70,5 @@ endif
 
 
 target: mkext molpkg
-
-export: mkext
-	scp $(TARGET) samuel@ibook:/tmp/mods.mkext
 
 .PHONY: target
