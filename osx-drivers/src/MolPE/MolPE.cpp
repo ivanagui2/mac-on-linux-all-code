@@ -51,7 +51,7 @@ MolPE::start( IOService *provider )
 	bool ret;
 	setChipSetType(kChipSetTypeMol);
 	setMachineType(kMolStdMachineType);
-	//setBootROMType(kBootROMTypeNewWorld);
+	setBootROMType(kBootROMTypeNewWorld);
 	
 	//printm("MolPE::start\n");
     
