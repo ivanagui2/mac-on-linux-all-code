@@ -174,8 +174,8 @@ MolPIC::handleInterrupt( void *refCon, IOService *nub, int source )
 bool
 MolPIC::vectorCanBeShared( long vectorNumber, IOInterruptVector *vector )
 {
-	printm("IRQ vectorCanBeShared %d\n", vectorNumber );
 	// Given the vector number and the vector data, return if it can be shared.
+	// printm("IRQ vectorCanBeShared %d\n", vectorNumber );
 	//return true;
 	return false;
 }
