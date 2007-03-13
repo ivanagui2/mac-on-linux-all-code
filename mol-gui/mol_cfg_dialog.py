@@ -209,11 +209,12 @@ def mol_cfg_blkdev():
 
 def mol_cfg_osx():
 	### Create a molrc.osx file
+	osx_cfg = MOL_OS()
 	step = 0
 	while step == 0:
 		name_prompt = Dialog_inputbox('Name this configuation')
-		name = str(name_prompt.draw())
-		if (len(name) > 0):
+		osx_cfg.name = str(name_prompt.draw())
+		if (len(osx_cfg.name) > 0):
 			step +=1
 		else:
 			warn = Dialog_msgbox('You must specify a configuaration name').draw()
@@ -221,31 +222,30 @@ def mol_cfg_osx():
 		try:
 			ram_prompt = Dialog_inputbox('RAM (MB)')
 			raw_ram = int(ram_prompt.draw())
-			ram = str(raw_ram)
+			osx_cfg.ram = str(raw_ram)
 			step += 1
 		except ValueError:
 			warn = Dialog_msgbox('Invalid RAM value').draw()
 	if (Dialog_yesno('Disable AltiVec?').draw() == 0):
-		dis_altivec = "no"
+		osx_cfg.altivec = "no"
 	else:
-		dis_altivec = "yes"
+		osx_cfg.altivec = "yes"
 	if (Dialog_yesno('Enable USB?').draw() == 0):
-		enable_usb = "no"
+		osx_cfg.usb = "no"
 	else:
-		enable_usb = "yes"
+		osx_cfg.usb = "yes"
 	if (Dialog_yesno('Enable autoprobing of SCSI devices?').draw() == 0):
-		auto_scsi = "no"
+		osx_cfg.auto_scsi = "no"
 	else:
-		auto_scsi = "yes"
-	blk_devs = []
+		osx_cfg.auto_scsi = "yes"
 	while step == 2:
 		### At least one block device is required
 		### TODO: Need to add an option to create a new image
-		if (len(blk_devs) == 0):
+		if (len(osx_cfg.volumes) == 0):
 			### Grab block device and arguments from function
 			blk_dev = mol_cfg_blkdev()
 			### Add new device to the list
-			blk_devs.append(blk_dev)
+			osx_cfg.volumes.append(blk_dev)
 		else:
 			if (Dialog_yesno('Add another block device?').draw() == 0):
 				step += 1
@@ -253,10 +253,10 @@ def mol_cfg_osx():
 				### Grab block device and arguments from function
 				blk_dev = mol_cfg_blkdev()
 				### Add new device to the list
-				blk_devs.append(blk_dev)
+				osx_cfg.volumes.append(blk_dev)
 	### Write it to the config file
 	### TODO: error handling
-	write_osx_config(name,ram,dis_altivec,enable_usb,auto_scsi,blk_devs)
+	osx_cfg.write()
 	Dialog_msgbox('Config file written').draw()
 
 def mol_cfg_dialog_init():
