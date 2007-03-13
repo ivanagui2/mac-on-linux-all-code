@@ -76,6 +76,9 @@ class Dialog_yesno(Dialog):
 		Dialog.__init__(self, text)
 		self.type = "yesno"
 
+	def draw(self):
+		return Dialog.draw(self)
+
 ### Type in a line of text
 class Dialog_inputbox(Dialog):
 	def __init__(self, text):
@@ -134,6 +137,14 @@ def mol_dialog_main():
 ### Add an OS
 def mol_dialog_add():
 	add = Dialog_menu('MOL - Add an OS')
+	### Add an OS X OS
+	add.add('OS_X','Mac OS X')
+	### Add a Mac Classic OS
+	add.add('OS_9','Mac OS 9 or earlier')
+	### Add a Linux OS
+	add.add('Linux','Linux')
+	### Exit
+	add.add('Back','Cancel')
 	return add
 	
 def mol_dialog_config():
@@ -151,6 +162,74 @@ def mol_dialog_config():
 	cfg.add('Back', 'Quit without saving')
 	return cfg
 
+def mol_cfg_osx():
+	### Create a molrc.osx file
+	step = 0
+	while step == 0:
+		name_prompt = Dialog_inputbox('Name this configuation')
+		name = str(name_prompt.draw())
+		if (len(name) > 0):
+			step +=1
+		else:
+			warn = Dialog_msgbox('You must specify a configuaration name').draw()
+	while step == 1:
+		try:
+			ram_prompt = Dialog_inputbox('RAM (MB)')
+			ram = int(ram_prompt.draw())
+			step += 1
+		except ValueError:
+			warn = Dialog_msgbox('Invalid RAM value').draw()
+	if (Dialog_yesno('Disable AltiVec?').draw() == 0):
+		dis_altivec = "no"
+	else:
+		dis_altivec = "yes"
+	if (Dialog_yesno('Enable USB?').draw() == 0):
+		enable_usb = "no"
+	else:
+		enable_usb = "yes"
+	if (Dialog_yesno('Enable autoprobing of SCSI devices?').draw() == 0):
+		auto_scsi = "no"
+	else:
+		auto_scsi = "yes"
+	blk_devs = []
+	while step == 2:
+		### At least one block device is required
+		### Need to add an option to create a new image
+		### Break the block device adding dialog into a function 
+		if (len(blk_devs) == 0):
+			blk_dev_p = Dialog_inputbox('Please specify a block device')
+			blk_dev = str(blk_dev_p.draw())
+			if (not blk_dev):
+				warn = Dialog_msgbox('You must specify a block device').draw()
+			### Boot device?
+			if (Dialog_yesno('Boot from this device?').draw() != 0):
+				blk_dev	= blk_dev + ' -boot'
+			### CD-Rom?
+			if (Dialog_yesno('Is this a CD device?').draw() != 0):
+				blk_dev = blk_dev + ' -cd'
+			### Writeable media?
+			if (Dialog_yesno('Is this a read-only device?').draw() != 0):
+				blk_dev = blk_dev + ' -ro'
+			else:
+				blk_dev = blk_dev + ' -rw'
+			### Force
+			### Whole
+			### Boot1?
+			blk_devs.append(blk_dev)
+		else:
+			if (Dialog_yesno('Add another block device?').draw() == 0):
+				step += 1
+			else:
+				blk_dev_p = Dialog_inputbox('Please specify a block device')
+				blk_dev = blk_dev_p.draw()
+				if (blk_dev):
+					blk_devs.append(blk_dev)
+				else:
+					warn = Dialog_msgbox('You must specify a block device')
+				
+	print blk_devs
+	return 1
+
 def mol_cfg_dialog_init():
 	mm = mol_dialog_main()
 
@@ -159,6 +238,18 @@ def mol_cfg_dialog_init():
 
 		if result == "Quit" or result == 0:
 			sys.exit()
+		### Create a new MOL machinie configuation
+		elif result == "Add":
+			add = mol_dialog_add()	
+			done = 0
+			while(not done):
+				result = add.draw()
+				if result == "Back" or result == 0:
+					done = 1
+				elif result == "OS_X":
+					mol_cfg_osx()
+					done = 1
+		### Adjust global mol settings
 		elif result == "Configure":
 			cfg = mol_dialog_config()	
 			done = 0
