@@ -131,8 +131,9 @@ class MOL_OS:
 ################################################################################
 ### Quick 'n' dirty config file writer
 def write_osx_config(name,ram,dis_altivec,usb,auto_scsi,blk_devs):
-	buffer = ["#  Mac-on-Linux master configuration file for MacOS X booting"]
+	buffer = ["#  Mac-on-Linux master configuration file for MacOS X booting\n"]
 	buffer.append("# Configuration name: " + name + "\n")
+	buffer.append("include\t\t${etc}/molrc.video\ninclude\t\t${etc}/molrc.input\ninclude\t\t${etc}/molrc.net\ninclude\t\t${etc}/molrc.sound\n")
 	### Start adding options to the config
 	### RAM
 	buffer.append("ram_size:\t\t" + ram + "\n")
