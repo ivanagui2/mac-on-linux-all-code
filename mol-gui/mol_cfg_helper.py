@@ -128,6 +128,31 @@ class MOL_OS:
 			"autoprobe_scsi":"MOL will automatically scan for SCSI devices if this is enabled",
 			"enable_usb":"Add support for USB devices unclaimed by the kernel, requires usbfs support",
 		}
+################################################################################
+### Quick 'n' dirty config file writer
+def write_osx_config(name,ram,dis_altivec,usb,auto_scsi,blk_devs):
+	buffer = ["#  Mac-on-Linux master configuration file for MacOS X booting"]
+	buffer.append("# Configuration name: " + name + "\n")
+	### Start adding options to the config
+	### RAM
+	buffer.append("ram_size:\t\t" + ram + "\n")
+	### AltiVec
+	buffer.append("disable_alitvec:\t\t" + dis_altivec + "\n")
+	### USB support
+	buffer.append("enable_usb:\t\t" + usb + "\n")
+	### Autoprobe SCSI
+	buffer.append("autoprobe_scsi:\t\t" + auto_scsi + "\n")
+	### TODO: Add individual SCSI devs if ! auto_scsi
+	### Block devices
+	for device in blk_devs:
+		buffer.append("blkdev:\t\t" + device + "\n")
+	### Open and write the file
+	### TODO: stick configs in appropriate folder
+	### TODO: need error handling here
+	config_file = open(name + '.mol','w')
+	for line in buffer:
+		config_file.write(line)
+	config_file.close()
 
 ### MOL Default configuration
 	### Object for configuration

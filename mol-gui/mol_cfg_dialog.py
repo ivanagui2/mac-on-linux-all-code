@@ -162,6 +162,51 @@ def mol_dialog_config():
 	cfg.add('Back', 'Quit without saving')
 	return cfg
 
+def mol_dialog_ro():
+	read = Dialog_menu('Is the device writable?')
+	### Read-write
+	read.add('rw','Read-Write')
+	### Read only
+	read.add('ro','Read-Only')
+	return read
+
+def mol_cfg_blkdev():
+	track = 0
+	while (track == 0):
+		### FIXME Need regex to validate block device paths
+		try:
+			blk_dev_p = Dialog_inputbox('Please specify a block device')
+			blk_dev = str(blk_dev_p.draw())
+			if (not blk_dev):
+				warn = Dialog_msgbox('You must specify a block device').draw()
+			else:
+				track += 1
+		except:
+			warn = Dialog_msgbox('Not a valid path').draw()
+	### Boot device?
+	if (Dialog_yesno('Boot from this device?').draw() != 0):
+		blk_dev	= blk_dev + ' -boot'
+	### CD-Rom?
+	if (Dialog_yesno('Is this a CD device?').draw() != 0):
+		blk_dev = blk_dev + ' -cd -ro'
+	else:
+		### Writeable media?
+		read_prompt = mol_dialog_ro()
+		read = str(read_prompt.draw())
+		blk_dev = blk_dev + ' -' + read
+	### Configure adavanced options?
+	if (Dialog_yesno('Would you like to configure advanced options for this device?').draw() != 0):
+		### Force
+		if (Dialog_yesno('Force MOL to use this device?\n(required for unformatted volumes)').draw() != 0):
+			blk_dev = blk_dev + ' -force'
+		### Whole
+		if (Dialog_yesno('Export the entire device?').draw() != 0):
+			blk_dev = blk_dev + ' -whole'
+		### Boot1?
+		if (Dialog_yesno('Force MOL to boot from this disk?\n(in spite of other boot options)').draw() != 0):
+			blk_dev = blk_dev + ' -boot1'
+	return blk_dev	
+
 def mol_cfg_osx():
 	### Create a molrc.osx file
 	step = 0
@@ -175,7 +220,8 @@ def mol_cfg_osx():
 	while step == 1:
 		try:
 			ram_prompt = Dialog_inputbox('RAM (MB)')
-			ram = int(ram_prompt.draw())
+			raw_ram = int(ram_prompt.draw())
+			ram = str(raw_ram)
 			step += 1
 		except ValueError:
 			warn = Dialog_msgbox('Invalid RAM value').draw()
@@ -194,41 +240,24 @@ def mol_cfg_osx():
 	blk_devs = []
 	while step == 2:
 		### At least one block device is required
-		### Need to add an option to create a new image
-		### Break the block device adding dialog into a function 
+		### TODO: Need to add an option to create a new image
 		if (len(blk_devs) == 0):
-			blk_dev_p = Dialog_inputbox('Please specify a block device')
-			blk_dev = str(blk_dev_p.draw())
-			if (not blk_dev):
-				warn = Dialog_msgbox('You must specify a block device').draw()
-			### Boot device?
-			if (Dialog_yesno('Boot from this device?').draw() != 0):
-				blk_dev	= blk_dev + ' -boot'
-			### CD-Rom?
-			if (Dialog_yesno('Is this a CD device?').draw() != 0):
-				blk_dev = blk_dev + ' -cd'
-			### Writeable media?
-			if (Dialog_yesno('Is this a read-only device?').draw() != 0):
-				blk_dev = blk_dev + ' -ro'
-			else:
-				blk_dev = blk_dev + ' -rw'
-			### Force
-			### Whole
-			### Boot1?
+			### Grab block device and arguments from function
+			blk_dev = mol_cfg_blkdev()
+			### Add new device to the list
 			blk_devs.append(blk_dev)
 		else:
 			if (Dialog_yesno('Add another block device?').draw() == 0):
 				step += 1
 			else:
-				blk_dev_p = Dialog_inputbox('Please specify a block device')
-				blk_dev = blk_dev_p.draw()
-				if (blk_dev):
-					blk_devs.append(blk_dev)
-				else:
-					warn = Dialog_msgbox('You must specify a block device')
-				
-	print blk_devs
-	return 1
+				### Grab block device and arguments from function
+				blk_dev = mol_cfg_blkdev()
+				### Add new device to the list
+				blk_devs.append(blk_dev)
+	### Write it to the config file
+	### TODO: error handling
+	write_osx_config(name,ram,dis_altivec,enable_usb,auto_scsi,blk_devs)
+	Dialog_msgbox('Config file written').draw()
 
 def mol_cfg_dialog_init():
 	mm = mol_dialog_main()
