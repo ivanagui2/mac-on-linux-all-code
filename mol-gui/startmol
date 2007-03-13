@@ -1,0 +1,28 @@
+#!/usr/bin/python
+
+######################################################################
+### Parse the input to decide which frontend to load (dialog, gtk, qt)
+### different versions are started with different names:
+### mol-cfg-gtk == gtk version, etc.
+######################################################################
+
+try:
+	import sys
+	### Import the backend
+	from mol_cfg_helper import *
+
+	### If the user wants the gtk frontend
+	if sys.argv[0].count("-gtk"):
+		from mol_cfg_gtk import *
+	### If the user wants the qt frontend
+	elif sys.argv[0].count("-qt"):
+		from mol_cfg_qt import *
+	### The user gets the dialog based frontend otherwise...
+	else:
+		from mol_cfg_dialog import *
+		mol_cfg_dialog_init()
+
+except ImportError, e:
+	print "Module loading failed with: " + str(e)
+	print "Please check that MOL is installed correctly!"
+	sys.exit()
