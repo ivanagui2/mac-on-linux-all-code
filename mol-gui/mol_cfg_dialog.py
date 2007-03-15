@@ -170,13 +170,93 @@ def mol_dialog_ro():
 	read.add('ro','Read-Only')
 	return read
 
+def edit_bootflags_menu(device):
+	opts = ""
+	for option in device[1:]:
+		opts = opts + " -" + option
+	### Draw the menu
+	menu = Dialog_menu('MOL - Edit device options\n\nSelected device:\n\t' + device[0] + opts +'\n\nToggle which option?')
+	### List boot options
+	menu.add('boot','Boot from this device')
+	menu.add('cd','This is a CD-ROM device')
+	menu.add('ro','This device is read-only')
+	menu.add('rw','This device is writeable')
+	menu.add('force','Force MOL to use this device')
+	menu.add('whole','Export the whole device to MOL')
+	menu.add('boot1','Boot from this device above any others')
+	menu.add('Done','Done')
+	return menu
+
+def edit_bootflags(device):
+	done = 0
+	while (not done):
+		boot_menu = edit_bootflags_menu(device)
+		sel = boot_menu.draw()
+		if (sel == 'Done'):
+			done = 1
+		else:
+			device = mol_edit_bootflag(device,sel) 
+	return device
+
+def blkdev_menu(volumes):
+	menu = Dialog_menu('Select which device you want to edit')
+	### Populate menu with a list of devices and options
+	for d in range(len(volumes)):
+		opts = ""
+		for option in volumes[d][1:]:
+			opts = opts + " -" + option
+		menu.add(str((d+1)),str(volumes[d][0])+ opts)
+	menu.add('Done','Done')
+	return menu
+
+def mol_edit_blkdev(volumes):
+	done = 0
+	while (not done):
+		edit_menu = blkdev_menu(volumes)
+		sel = edit_menu.draw()
+		if (sel == 'Done'):
+			done = 1
+		### Send selected device to have its bootflags tweaked (ouch!)
+		else:
+			index = (int(sel)-1)
+			volumes[index] = edit_bootflags(volumes[index])
+	return volumes
+
+def mol_dialog_blkdev(volumes):
+	device_list = ""
+	if (len(volumes) > 0):
+		device_list = "\n\nList of currently configured devices and options:"
+		### Print a list of configured volumes
+		for item in volumes:
+			opts = ""
+			for option in item[1:]:
+				opts = opts + " -" + option
+			device_list = device_list + '\n\t' + item[0] + opts
+	response = Dialog_menu('MOL - Add block device menu' + device_list)
+	### Add a new device
+	response.add('Add','Add a new device or volume')
+	### Option to edit or deletepreviously entered block devices
+	if (len(volumes) > 0):
+		### Edit a device's boot flags
+		response.add('Edit',"Edit a device's options")
+		### Delete a device
+		### TODO add delete menu
+		response.add('Delete','Delete a device')
+	### Help prompt
+	response.add('Help','Help')
+	### Continue
+	response.add('Done','Finished')
+	return response
+
 def mol_cfg_blkdev():
 	track = 0
+	blk_dev=[]
+	### Addition dialog
 	while (track == 0):
 		### FIXME Need regex to validate block device paths
 		try:
 			blk_dev_p = Dialog_inputbox('Please specify a block device')
-			blk_dev = str(blk_dev_p.draw())
+			blk_dev.append(str(blk_dev_p.draw()))
 			if (not blk_dev):
 				warn = Dialog_msgbox('You must specify a block device').draw()
 			else:
@@ -185,31 +265,32 @@ def mol_cfg_blkdev():
 			warn = Dialog_msgbox('Not a valid path').draw()
 	### Boot device?
 	if (Dialog_yesno('Boot from this device?').draw() != 0):
-		blk_dev	= blk_dev + ' -boot'
+		blk_dev.append('boot')
 	### CD-Rom?
 	if (Dialog_yesno('Is this a CD device?').draw() != 0):
-		blk_dev = blk_dev + ' -cd -ro'
+		blk_dev.append('cd')
+		blk_dev.append('ro')
 	else:
 		### Writeable media?
 		read_prompt = mol_dialog_ro()
-		read = str(read_prompt.draw())
-		blk_dev = blk_dev + ' -' + read
+		blk_dev.append(str(read_prompt.draw()))
 	### Configure adavanced options?
 	if (Dialog_yesno('Would you like to configure advanced options for this device?').draw() != 0):
 		### Force
 		if (Dialog_yesno('Force MOL to use this device?\n(required for unformatted volumes)').draw() != 0):
-			blk_dev = blk_dev + ' -force'
+			blk_dev.append('force')
 		### Whole
 		if (Dialog_yesno('Export the entire device?').draw() != 0):
-			blk_dev = blk_dev + ' -whole'
+			blk_dev.append('whole')
 		### Boot1?
 		if (Dialog_yesno('Force MOL to boot from this disk?\n(in spite of other boot options)').draw() != 0):
-			blk_dev = blk_dev + ' -boot1'
+					blk_dev.append('boot1')
 	return blk_dev	
 
 def mol_cfg_osx():
 	### Create a molrc.osx file
 	osx_cfg = MOL_OS()
+	osx_cfg.type = "osx"
 	step = 0
 	while step == 0:
 		name_prompt = Dialog_inputbox('Name this configuation')
@@ -239,22 +320,27 @@ def mol_cfg_osx():
 	else:
 		osx_cfg.auto_scsi = "yes"
 	while step == 2:
-		### At least one block device is required
-		### TODO: Need to add an option to create a new image
-		if (len(osx_cfg.volumes) == 0):
-			### Grab block device and arguments from function
+		volumes_menu = mol_dialog_blkdev(osx_cfg.volumes)
+		sel = volumes_menu.draw()
+		if (sel == 0):
+			return
+		elif (sel == "Done"):
+			if (len(osx_cfg.volumes) > 0):
+				step += 1
+			else:
+				warn = Dialog_msgbox('You must specify at least one device.').draw()
+		elif (sel == "Add"):
 			blk_dev = mol_cfg_blkdev()
 			### Add new device to the list
 			osx_cfg.volumes.append(blk_dev)
-		else:
-			if (Dialog_yesno('Add another block device?').draw() == 0):
-				step += 1
-			else:
-				### Grab block device and arguments from function
-				blk_dev = mol_cfg_blkdev()
-				### Add new device to the list
-				osx_cfg.volumes.append(blk_dev)
-	### Write it to the config file
+		elif (sel == "Edit"):
+			osx_cfg.volumes = mol_edit_blkdev(osx_cfg.volumes)
+		### Help display
+		### TODO: make it
+		elif (sel == "Help"):
+			print "Help"
+
+### Write it to the config file
 	### TODO: error handling
 	osx_cfg.write()
 	Dialog_msgbox('Config file written').draw()

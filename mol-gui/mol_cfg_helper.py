@@ -3,6 +3,8 @@
 ###############################################################################
 ### Provide a backend for different frontends
 
+import os
+
 ### Volumes
 class MOL_Volume:
 	def __init__(self, path):
@@ -99,6 +101,8 @@ class MOL_OS:
 	def __init__(self):	
 		### OS Name - Used for config file naming
 		self.name = "Unknown"
+		### OS Type (osx, macos, linux) - Used to customize config file for guest OS
+		self.type = "osx"
 		### MB RAM assigned to this configuration
 		self.ram = 256
 		### Altivec Enabled?
@@ -128,6 +132,15 @@ class MOL_OS:
 			"autoprobe_scsi":"MOL will automatically scan for SCSI devices if this is enabled",
 			"enable_usb":"Add support for USB devices unclaimed by the kernel, requires usbfs support",
 		}
+
+		### Initialize paths for MOL profiles directory
+		### TODO: Need to address file permission issues
+		### This needs to be run as root at the moment
+		### which is not very helpful for GTK and QT-based UIs
+		### Perhaps instead they could be per-user and go in ~/.mol/
+		if not os.path.exists('/var/lib/mol/profiles'):
+			os.mkdir('/var/lib/mol/profiles')
+
 	### TODO: decide whether OS type has a different write function or not
 	def write(self):
 		buffer = ["#  Mac-on-Linux master configuration file for MacOS X booting\n"]
@@ -145,14 +158,27 @@ class MOL_OS:
 		### TODO: Add individual SCSI devs if ! auto_scsi
 		### Block devices
 		for device in self.volumes:
-			buffer.append("blkdev:\t\t" + device + "\n")
+			dev_path = device[0]
+			dev_opts = ""
+			for option in device[1:]:
+				dev_opts = dev_opts + " -" + option
+			buffer.append("blkdev:\t\t" + dev_path + dev_opts + "\n")
 		### Open and write the file
 		### TODO: stick configs in appropriate folder
 		### TODO: need error handling here
-		config_file = open(self.name + '.mol','w')
+		if not os.path.exists('/var/lib/mol/profiles/' + self.name):
+			os.mkdir('/var/lib/mol/profiles/' + self.name)
+		config_file = open('/var/lib/mol/profiles/' + self.name + '/molrc.' + self.type,'w')
 		for line in buffer:
 			config_file.write(line)
 		config_file.close()
+
+def mol_edit_bootflag(device,flag):
+	if flag in device:
+		device.remove(flag)
+	else:
+		device.append(flag)
+	return device
 
 ### MOL Default configuration
 	### Object for configuration
