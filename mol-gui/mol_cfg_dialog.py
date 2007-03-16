@@ -170,6 +170,28 @@ def mol_dialog_ro():
 	read.add('ro','Read-Only')
 	return read
 
+def delete_blkdev_menu(volumes):
+	menu = Dialog_menu('Select the device you would like to delete')
+	### Populate the menu
+	for i in range(len(volumes)):
+		menu.add(str(i+1),volumes[i][0])
+	menu.add('Done','Done')
+	return menu
+
+def mol_delete_blkdev(volumes):
+	done = 0
+	while (not done):
+		delete_menu = delete_blkdev_menu(volumes)
+		sel = delete_menu.draw()
+		if (sel == 0):
+			done = 1
+		elif (sel == 'Done'):
+			done = 1
+		else:
+			volumes.pop(int(sel)-1) 
+			print volumes
+	return volumes
+
 def edit_bootflags_menu(device):
 	opts = ""
 	for option in device[1:]:
@@ -192,8 +214,13 @@ def edit_bootflags(device):
 	while (not done):
 		boot_menu = edit_bootflags_menu(device)
 		sel = boot_menu.draw()
-		if (sel == 'Done'):
+		### Cancel escpaes the function
+		if (sel == 0):
+			return
+		### End the loop
+		elif (sel == 'Done'):
 			done = 1
+		### Toggle the selected bootflag
 		else:
 			device = mol_edit_bootflag(device,sel) 
 	return device
@@ -214,6 +241,10 @@ def mol_edit_blkdev(volumes):
 	while (not done):
 		edit_menu = blkdev_menu(volumes)
 		sel = edit_menu.draw()
+		### Bail if user cancels
+		if (sel == 0):
+			return
+		### All done
 		if (sel == 'Done'):
 			done = 1
 		### Send selected device to have its bootflags tweaked (ouch!)
@@ -235,7 +266,7 @@ def mol_dialog_blkdev(volumes):
 	response = Dialog_menu('MOL - Add block device menu' + device_list)
 	### Add a new device
 	response.add('Add','Add a new device or volume')
-	### Option to edit or deletepreviously entered block devices
+	### Option to edit or delete previously entered block devices
 	if (len(volumes) > 0):
 		### Edit a device's boot flags
 		response.add('Edit',"Edit a device's options")
@@ -292,6 +323,7 @@ def mol_cfg_osx():
 	osx_cfg = MOL_OS()
 	osx_cfg.type = "osx"
 	step = 0
+	### Configuration needs a name
 	while step == 0:
 		name_prompt = Dialog_inputbox('Name this configuation')
 		osx_cfg.name = str(name_prompt.draw())
@@ -299,6 +331,7 @@ def mol_cfg_osx():
 			step +=1
 		else:
 			warn = Dialog_msgbox('You must specify a configuaration name').draw()
+	### Guest OS RAM (MB)
 	while step == 1:
 		try:
 			ram_prompt = Dialog_inputbox('RAM (MB)')
@@ -307,18 +340,23 @@ def mol_cfg_osx():
 			step += 1
 		except ValueError:
 			warn = Dialog_msgbox('Invalid RAM value').draw()
+	### Give option to disable AltiVec
 	if (Dialog_yesno('Disable AltiVec?').draw() == 0):
 		osx_cfg.altivec = "no"
 	else:
 		osx_cfg.altivec = "yes"
+	### Enable USB suppot
 	if (Dialog_yesno('Enable USB?').draw() == 0):
 		osx_cfg.usb = "no"
 	else:
 		osx_cfg.usb = "yes"
+	### SCSI autoprobing
 	if (Dialog_yesno('Enable autoprobing of SCSI devices?').draw() == 0):
 		osx_cfg.auto_scsi = "no"
 	else:
 		osx_cfg.auto_scsi = "yes"
+	### FIXME Need function to add SCSI devices if there is no autoprobing
+	### Add block devices to the config
 	while step == 2:
 		volumes_menu = mol_dialog_blkdev(osx_cfg.volumes)
 		sel = volumes_menu.draw()
@@ -333,10 +371,13 @@ def mol_cfg_osx():
 			blk_dev = mol_cfg_blkdev()
 			### Add new device to the list
 			osx_cfg.volumes.append(blk_dev)
+		### Edit the block devices
 		elif (sel == "Edit"):
 			osx_cfg.volumes = mol_edit_blkdev(osx_cfg.volumes)
+		elif (sel == "Delete"):
+			osx_cfg.volumes = mol_delete_blkdev(osx_cfg.volumes)
 		### Help display
-		### TODO: make it
+		### TODO: make help text for block devices
 		elif (sel == "Help"):
 			print "Help"
 

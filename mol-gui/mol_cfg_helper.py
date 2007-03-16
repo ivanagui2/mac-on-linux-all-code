@@ -134,10 +134,7 @@ class MOL_OS:
 		}
 
 		### Initialize paths for MOL profiles directory
-		### TODO: Need to address file permission issues
-		### This needs to be run as root at the moment
-		### which is not very helpful for GTK and QT-based UIs
-		### Perhaps instead they could be per-user and go in ~/.mol/
+		### /var/lib/mol/profiles will be part of the mol group
 		if not os.path.exists('/var/lib/mol/profiles'):
 			os.mkdir('/var/lib/mol/profiles')
 
@@ -164,7 +161,6 @@ class MOL_OS:
 				dev_opts = dev_opts + " -" + option
 			buffer.append("blkdev:\t\t" + dev_path + dev_opts + "\n")
 		### Open and write the file
-		### TODO: stick configs in appropriate folder
 		### TODO: need error handling here
 		if not os.path.exists('/var/lib/mol/profiles/' + self.name):
 			os.mkdir('/var/lib/mol/profiles/' + self.name)
@@ -175,9 +171,21 @@ class MOL_OS:
 
 def mol_edit_bootflag(device,flag):
 	if flag in device:
+		### Unset the flag
 		device.remove(flag)
+		### Make sure either ro or rw is set 
+		if (flag == 'ro'):
+			device.append('rw')
+		elif (flag == 'rw'):
+			device.append('ro')
 	else:
+		### Add the flag to the device
 		device.append(flag)
+		### Don't allow ro and rw to coexist
+		if (flag == 'ro' and 'rw' in device):
+			device.remove('rw')
+		elif (flag == 'rw'and 'ro' in device):
+			device.remove('ro')
 	return device
 
 ### MOL Default configuration
