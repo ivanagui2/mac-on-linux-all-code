@@ -152,7 +152,9 @@ class MOL_OS:
 		buffer.append("enable_usb:\t\t" + self.usb + "\n")
 		### Autoprobe SCSI
 		buffer.append("autoprobe_scsi:\t\t" + self.auto_scsi + "\n")
-		### TODO: Add individual SCSI devs if ! auto_scsi
+		### SCSI devices
+		for device in self.scsi_devs:
+			buffer.append('scsi_dev:\t\t"' + device + '"\n')
 		### Block devices
 		for device in self.volumes:
 			dev_path = device[0]
@@ -169,24 +171,28 @@ class MOL_OS:
 			config_file.write(line)
 		config_file.close()
 
-def mol_edit_bootflag(device,flag):
-	if flag in device:
-		### Unset the flag
-		device.remove(flag)
-		### Make sure either ro or rw is set 
-		if (flag == 'ro'):
-			device.append('rw')
-		elif (flag == 'rw'):
-			device.append('ro')
-	else:
-		### Add the flag to the device
-		device.append(flag)
-		### Don't allow ro and rw to coexist
-		if (flag == 'ro' and 'rw' in device):
-			device.remove('rw')
-		elif (flag == 'rw'and 'ro' in device):
-			device.remove('ro')
-	return device
+	### Alter a boot option on a volume
+	def edit_bootflag(self,device,flag):
+		index = self.volumes.index(device)
+		if flag in self.volumes[index]:
+			### Unset the flag
+			self.volumes[index].remove(flag)
+			### Make sure either ro or rw is set
+			if (flag == 'ro'):
+				self.volumes[index].append('rw')
+			elif (flag == 'rw'):
+				self.volumes[index].append('ro')
+		else:
+			### Add the flag to the device
+			self.volumes[index].append(flag)
+			### Don't allow ro and rw to exist
+			if (flag =='ro' and 'rw' in self.volumes[index]):
+				self.volumes[index].remove('rw')
+			elif (flag == 'rw' and 'ro' in self.volumes[index]):
+				self.volumes[index].remove('ro')
+
+	def test(self):
+		print "This is an explosion"
 
 ### MOL Default configuration
 	### Object for configuration

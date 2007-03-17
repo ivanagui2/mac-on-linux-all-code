@@ -162,54 +162,118 @@ def mol_dialog_config():
 	cfg.add('Back', 'Quit without saving')
 	return cfg
 
-def mol_dialog_ro():
-	read = Dialog_menu('Is the device writable?')
+###############################################################################
+### SCSI helper functions
+###############################################################################
+
+### Help SCSI devices
+def scsi_help():
+	Dialog_msgbox('MOL - SCSI device help\n\nMac-on-Linux can use SCSI  \
+	devices attached to your computer in the guest OS.  You can either \
+	allow MOL to add all attached devices automatically by enabling auto \
+	probing of SCSI devices, or you can choose to enter devices manually by\
+	specifying the host, channel, and ID of each device (e.g. 0:2:4).').draw()
+	return
+
+### Dialog for deleting a SCSI device
+def del_scsi_menu(devices):
+	menu = Dialog_menu('Select the device you would like to delete')
+	### Populate the menu
+	for i in range(len(devices)):
+		menu.add(str(i+1),devices[i])
+	menu.add('Done','Done')
+	### Return volume index + 1 (for looks and to avoid 0 = cancel conflict)
+	return menu
+
+### Dialog for adding a SCSI device
+def scsi_add(cfg):
+	done = 0
+	while (not done):
+		ask = Dialog_inputbox('Plese specify a SCSI device\nPattern: host:channel:id\nExample: 0:0:1')
+		new_scsi = ask.draw()
+		if (new_scsi == 0):
+			return
+		if (not new_scsi):
+			return
+		else:
+			### FIXME Need regex to evaluate new SCSI devices
+			 cfg.scsi_devs.append(new_scsi)
+			 return
+### Main SCSI device menu
+def scsi_menu(devices):
+	device_list = ""
+	if (len(devices) > 0):
+		device_list = "\n\nList of currently configured devices:"
+		### Print a list of configured volumes
+		for item in devices:
+			device_list = device_list + '\n\t' + item
+	response = Dialog_menu('MOL - SCSI device menu' + device_list)
+	### Auto probing of SCSI devices
+	response.add('Auto','Enable auto probing of SCSI devices')
+	### Add a new device
+	response.add('Add','Add a new SCSI device')
+	### Option to delete previously entered SCSI devices
+	if (len(devices) > 0):
+		### Delete a device
+		### TODO add delete menu
+		response.add('Delete','Delete a device')
+	### Help prompt
+	response.add('Help','Help')
+	### Continue
+	response.add('Done','Finished')
+	return response
+
+###############################################################################
+### Block device helper functions
+###############################################################################
+
+def blkdev_help():
+	Dialog_msgbox('MOL - Volumes help\n\nMac-on-Linux exports volumes for\
+	the guest OS to use.  A volume can be an entire disk (e.g. /dev/hda or\
+	/dev/cdrom), a single partition (e.g. /dev/hda3), or an image file \
+	(e.g. /home/user/mol.img).  Also, there are a number of options which \
+	can be specified for each volume, including whether MOL should boot from\
+	it, whether the volume is writeable, and if the volume is a CD-ROM (which\
+	is usefull for the --cdboot option).  Unformatted volumes will require \
+	the -force option (which is found under advanced options).  You must \
+	specify at least one volume.').draw()
+	return
+
+def ro_dialog():
+	read = Dialog_menu('Is the volume writable?')
 	### Read-write
 	read.add('rw','Read-Write')
 	### Read only
 	read.add('ro','Read-Only')
 	return read
 
-def delete_blkdev_menu(volumes):
-	menu = Dialog_menu('Select the device you would like to delete')
+def del_blkdev_menu(volumes):
+	menu = Dialog_menu('Select the volume you would like to delete')
 	### Populate the menu
 	for i in range(len(volumes)):
 		menu.add(str(i+1),volumes[i][0])
 	menu.add('Done','Done')
+	### Return volume index + 1 (for looks and to avoid '0' conflict)
 	return menu
-
-def mol_delete_blkdev(volumes):
-	done = 0
-	while (not done):
-		delete_menu = delete_blkdev_menu(volumes)
-		sel = delete_menu.draw()
-		if (sel == 0):
-			done = 1
-		elif (sel == 'Done'):
-			done = 1
-		else:
-			volumes.pop(int(sel)-1) 
-			print volumes
-	return volumes
 
 def edit_bootflags_menu(device):
 	opts = ""
 	for option in device[1:]:
 		opts = opts + " -" + option
 	### Draw the menu
-	menu = Dialog_menu('MOL - Edit device options\n\nSelected device:\n\t' + device[0] + opts +'\n\nToggle which option?')
+	menu = Dialog_menu('MOL - Edit volume options\n\nSelected volume:\n\t' + device[0] + opts +'\n\nToggle which option?')
 	### List boot options
-	menu.add('boot','Boot from this device')
+	menu.add('boot','Boot from this volume')
 	menu.add('cd','This is a CD-ROM device')
-	menu.add('ro','This device is read-only')
-	menu.add('rw','This device is writeable')
-	menu.add('force','Force MOL to use this device')
+	menu.add('ro','This volume is read-only')
+	menu.add('rw','This volume is writeable')
+	menu.add('force','Force MOL to use this volume\n(required if the volume is unformatted)')
 	menu.add('whole','Export the whole device to MOL')
-	menu.add('boot1','Boot from this device above any others')
+	menu.add('boot1','Boot from this volume above any others')
 	menu.add('Done','Done')
 	return menu
 
-def edit_bootflags(device):
+def edit_bootflags(cfg,device):
 	done = 0
 	while (not done):
 		boot_menu = edit_bootflags_menu(device)
@@ -222,11 +286,10 @@ def edit_bootflags(device):
 			done = 1
 		### Toggle the selected bootflag
 		else:
-			device = mol_edit_bootflag(device,sel) 
-	return device
+			cfg.edit_bootflag(device,sel)
 
-def blkdev_menu(volumes):
-	menu = Dialog_menu('Select which device you want to edit')
+def edit_blkdev_menu(volumes):
+	menu = Dialog_menu('Select which volume you want to edit')
 	### Populate menu with a list of devices and options
 	for d in range(len(volumes)):
 		opts = ""
@@ -236,10 +299,10 @@ def blkdev_menu(volumes):
 	menu.add('Done','Done')
 	return menu
 
-def mol_edit_blkdev(volumes):
+def edit_blkdev(cfg,volumes):
 	done = 0
 	while (not done):
-		edit_menu = blkdev_menu(volumes)
+		edit_menu = edit_blkdev_menu(volumes)
 		sel = edit_menu.draw()
 		### Bail if user cancels
 		if (sel == 0):
@@ -250,52 +313,53 @@ def mol_edit_blkdev(volumes):
 		### Send selected device to have its bootflags tweaked (ouch!)
 		else:
 			index = (int(sel)-1)
-			volumes[index] = edit_bootflags(volumes[index])
-	return volumes
+			edit_bootflags(cfg,volumes[index])
 
-def mol_dialog_blkdev(volumes):
+def blkdev_menu(volumes):
 	device_list = ""
 	if (len(volumes) > 0):
-		device_list = "\n\nList of currently configured devices and options:"
+		device_list = "\n\nList of currently configured volumes and options:"
 		### Print a list of configured volumes
 		for item in volumes:
 			opts = ""
 			for option in item[1:]:
 				opts = opts + " -" + option
 			device_list = device_list + '\n\t' + item[0] + opts
-	response = Dialog_menu('MOL - Add block device menu' + device_list)
+	response = Dialog_menu('MOL - Add volume menu' + device_list)
 	### Add a new device
-	response.add('Add','Add a new device or volume')
+	response.add('Add','Add a new volume')
 	### Option to edit or delete previously entered block devices
 	if (len(volumes) > 0):
 		### Edit a device's boot flags
-		response.add('Edit',"Edit a device's options")
+		response.add('Edit',"Edit a volume's options")
 		### Delete a device
-		### TODO add delete menu
-		response.add('Delete','Delete a device')
+		response.add('Delete','Delete a volume')
 	### Help prompt
 	response.add('Help','Help')
 	### Continue
 	response.add('Done','Finished')
 	return response
 
-def mol_cfg_blkdev():
+def add_blkdev(cfg):
 	track = 0
 	blk_dev=[]
 	### Addition dialog
 	while (track == 0):
 		### FIXME Need regex to validate block device paths
+		### FIXME Need path verification
 		try:
-			blk_dev_p = Dialog_inputbox('Please specify a block device')
+			blk_dev_p = Dialog_inputbox("Please specify a volume's path")
 			blk_dev.append(str(blk_dev_p.draw()))
 			if (not blk_dev):
-				warn = Dialog_msgbox('You must specify a block device').draw()
+				Dialog_msgbox('You must specify a volume').draw()
+			elif (blk_dev == 0):
+				return
 			else:
 				track += 1
 		except:
-			warn = Dialog_msgbox('Not a valid path').draw()
+			Dialog_msgbox('Not a valid path').draw()
 	### Boot device?
-	if (Dialog_yesno('Boot from this device?').draw() != 0):
+	if (Dialog_yesno('Boot from this volume?').draw() != 0):
 		blk_dev.append('boot')
 	### CD-Rom?
 	if (Dialog_yesno('Is this a CD device?').draw() != 0):
@@ -303,20 +367,24 @@ def mol_cfg_blkdev():
 		blk_dev.append('ro')
 	else:
 		### Writeable media?
-		read_prompt = mol_dialog_ro()
+		read_prompt = ro_dialog()
 		blk_dev.append(str(read_prompt.draw()))
 	### Configure adavanced options?
-	if (Dialog_yesno('Would you like to configure advanced options for this device?').draw() != 0):
+	if (Dialog_yesno('Would you like to configure advanced options for this volume?').draw() != 0):
 		### Force
-		if (Dialog_yesno('Force MOL to use this device?\n(required for unformatted volumes)').draw() != 0):
+		if (Dialog_yesno('Force MOL to use this volume?\n(required for unformatted volumes)').draw() != 0):
 			blk_dev.append('force')
 		### Whole
 		if (Dialog_yesno('Export the entire device?').draw() != 0):
 			blk_dev.append('whole')
 		### Boot1?
-		if (Dialog_yesno('Force MOL to boot from this disk?\n(in spite of other boot options)').draw() != 0):
+		if (Dialog_yesno('Force MOL to boot from this volume?\n(in spite of other boot options)').draw() != 0):
 					blk_dev.append('boot1')
-	return blk_dev	
+	cfg.volumes.append(blk_dev)	
+
+###############################################################################
+### Create OS X configuation
+###############################################################################
 
 def mol_cfg_osx():
 	### Create a molrc.osx file
@@ -327,19 +395,26 @@ def mol_cfg_osx():
 	while step == 0:
 		name_prompt = Dialog_inputbox('Name this configuation')
 		osx_cfg.name = str(name_prompt.draw())
-		if (len(osx_cfg.name) > 0):
+		if (osx_cfg.name == '0'):
+			return
+		elif (len(osx_cfg.name) > 0):
 			step +=1
 		else:
-			warn = Dialog_msgbox('You must specify a configuaration name').draw()
+			Dialog_msgbox('You must specify a configuaration name').draw()
 	### Guest OS RAM (MB)
 	while step == 1:
 		try:
 			ram_prompt = Dialog_inputbox('RAM (MB)')
 			raw_ram = int(ram_prompt.draw())
-			osx_cfg.ram = str(raw_ram)
-			step += 1
+			if raw_ram == 0:
+				return
+			elif (len(str(raw_ram)) > 0):
+				osx_cfg.ram = str(raw_ram)
+				step += 1
+			else:
+				Dialog_msgbox('You must specify the amount of RAM').draw()
 		except ValueError:
-			warn = Dialog_msgbox('Invalid RAM value').draw()
+			Dialog_msgbox('Invalid RAM value').draw()
 	### Give option to disable AltiVec
 	if (Dialog_yesno('Disable AltiVec?').draw() == 0):
 		osx_cfg.altivec = "no"
@@ -350,15 +425,9 @@ def mol_cfg_osx():
 		osx_cfg.usb = "no"
 	else:
 		osx_cfg.usb = "yes"
-	### SCSI autoprobing
-	if (Dialog_yesno('Enable autoprobing of SCSI devices?').draw() == 0):
-		osx_cfg.auto_scsi = "no"
-	else:
-		osx_cfg.auto_scsi = "yes"
-	### FIXME Need function to add SCSI devices if there is no autoprobing
 	### Add block devices to the config
 	while step == 2:
-		volumes_menu = mol_dialog_blkdev(osx_cfg.volumes)
+		volumes_menu = blkdev_menu(osx_cfg.volumes)
 		sel = volumes_menu.draw()
 		if (sel == 0):
 			return
@@ -366,25 +435,51 @@ def mol_cfg_osx():
 			if (len(osx_cfg.volumes) > 0):
 				step += 1
 			else:
-				warn = Dialog_msgbox('You must specify at least one device.').draw()
+				Dialog_msgbox('You must specify at least one device.').draw()
 		elif (sel == "Add"):
-			blk_dev = mol_cfg_blkdev()
 			### Add new device to the list
-			osx_cfg.volumes.append(blk_dev)
+			add_blkdev(osx_cfg)
 		### Edit the block devices
 		elif (sel == "Edit"):
-			osx_cfg.volumes = mol_edit_blkdev(osx_cfg.volumes)
+			edit_blkdev(osx_cfg,osx_cfg.volumes)
+		### Delete the block device
 		elif (sel == "Delete"):
-			osx_cfg.volumes = mol_delete_blkdev(osx_cfg.volumes)
+			### Reduce the result by one to get the proper array index
+			index = (int(del_blkdev_menu(osx_cfg.volumes).draw())-1)
+			### Use the class function for removing a block device
+			osx_cfg.volumes.pop(index)
 		### Help display
-		### TODO: make help text for block devices
 		elif (sel == "Help"):
-			print "Help"
-
-### Write it to the config file
-	### TODO: error handling
-	osx_cfg.write()
-	Dialog_msgbox('Config file written').draw()
+			blkdev_help()
+		### SCSI manual
+	while (step == 3):
+		s_menu = scsi_menu(osx_cfg.scsi_devs)
+		sel = s_menu.draw()
+		if (sel == 0):
+			step += 1
+		elif (sel == 'Auto'):
+			osx_cfg.auto_scsi = "yes"
+			step += 1
+		elif (sel == 'Done'):
+			osx_cfg.auto_scsi = "no"
+			step += 1
+		elif (sel == 'Add'):
+			### Add new device to the list
+			scsi_add(osx_cfg)
+		elif (sel == 'Delete'):
+			### Reduce the returned value by one to get index of SCSI dev to be removed
+			index = (int(del_scsi_menu(osx_cfg.scsi_devs).draw())-1)
+			### Excise the SCSI device
+			osx_cfg.scsi_devs.pop(index)
+		elif (sel == 'Help'):
+			scsi_help()
+	### TODO Add confirmation dialog
+	### Write it to the config file
+	try:
+		osx_cfg.write()
+		Dialog_msgbox('Config file written').draw()
+	except:
+		Dialog_msgbox('Error: config file not written').draw()
 
 def mol_cfg_dialog_init():
 	mm = mol_dialog_main()
@@ -394,7 +489,7 @@ def mol_cfg_dialog_init():
 
 		if result == "Quit" or result == 0:
 			sys.exit()
-		### Create a new MOL machinie configuation
+		### Create a new MOL machine configuation
 		elif result == "Add":
 			add = mol_dialog_add()	
 			done = 0
