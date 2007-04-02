@@ -215,7 +215,6 @@ def scsi_menu(devices):
 	### Option to delete previously entered SCSI devices
 	if (len(devices) > 0):
 		### Delete a device
-		### TODO add delete menu
 		response.add('Delete','Delete a device')
 	### Help prompt
 	response.add('Help','Help')
@@ -267,7 +266,7 @@ def edit_bootflags_menu(device):
 	menu.add('cd','This is a CD-ROM device')
 	menu.add('ro','This volume is read-only')
 	menu.add('rw','This volume is writeable')
-	menu.add('force','Force MOL to use this volume\n(required if the volume is unformatted)')
+	menu.add('force','Force MOL to use this volume (required if the volume is unformatted)')
 	menu.add('whole','Export the whole device to MOL')
 	menu.add('boot1','Boot from this volume above any others')
 	menu.add('Done','Done')
@@ -473,13 +472,34 @@ def mol_cfg_osx():
 			osx_cfg.scsi_devs.pop(index)
 		elif (sel == 'Help'):
 			scsi_help()
-	### TODO Add confirmation dialog
 	### Write it to the config file
-	try:
-		osx_cfg.write()
-		Dialog_msgbox('Config file written').draw()
-	except:
-		Dialog_msgbox('Error: config file not written').draw()
+	config_string = "MOL - Mac OS X configuration\n\nName:\t%s\n" % osx_cfg.name
+	config_string = config_string + "RAM:\t%s MB\n" % osx_cfg.ram
+	config_string = config_string + "Disable AltiVec:\t%s\n" % osx_cfg.altivec
+	config_string = config_string + "Enable USB:\t%s\n" % osx_cfg.usb
+	config_string = config_string + "Volumes:\n"
+	for volume in osx_cfg.volumes:
+		opts = ""
+		for option in volume[1:]:
+			opts = opts + ' -' + option
+		config_string = config_string + "\t" + volume[0] + opts + "\n"
+	config_string = config_string + "Enable SCSI autoprobing:\t%s\n" % osx_cfg.auto_scsi
+	if (osx_cfg.auto_scsi == 'no'):
+		config_string = config_string + "SCSI Devices:\n"
+		if (len(osx_cfg.scsi_devs) > 0):
+			for device in osx_cfg.scsi_devs:
+				config_string = config_string + "\t" + device + "\n"
+		else:
+			config_string = config_string + "\tnone\n"
+	config_string = config_string + "\n\nWrite this configuration?"
+	if (Dialog_yesno(config_string).draw() != 0):
+		try:
+			osx_cfg.write()
+			Dialog_msgbox('Config file written').draw()
+		except:
+			Dialog_msgbox('Error: config file not written').draw()
+	else:
+		return
 
 def mol_cfg_dialog_init():
 	mm = mol_dialog_main()
