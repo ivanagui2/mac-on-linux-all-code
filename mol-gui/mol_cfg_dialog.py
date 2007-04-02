@@ -5,7 +5,7 @@
 ###############################################################################
 
 try:
-	import sys, os, commands
+	import sys, os, commands, re
 	### Import the backend
 	from mol_cfg_helper import *
 
@@ -191,12 +191,16 @@ def scsi_add(cfg):
 	while (not done):
 		ask = Dialog_inputbox('Plese specify a SCSI device\nPattern: host:channel:id\nExample: 0:0:1')
 		new_scsi = ask.draw()
+		scsi_regex = re.compile("^.:.:.$")
 		if (new_scsi == 0):
 			return
-		if (not new_scsi):
+		elif (not new_scsi):
+			return
+		elif (not scsi_regex.match(new_scsi)):
+			Dialog_msgbox('Not a valid SCSI device path\n\nHint: \
+			Should match the pattern a:b:c\nExample: 0:0:1').draw()
 			return
 		else:
-			### FIXME Need regex to evaluate new SCSI devices
 			 cfg.scsi_devs.append(new_scsi)
 			 return
 ### Main SCSI device menu
@@ -344,8 +348,7 @@ def add_blkdev(cfg):
 	blk_dev=[]
 	### Addition dialog
 	while (track == 0):
-		### FIXME Need regex to validate block device paths
-		### FIXME Need path verification
+		### TODO Image creation
 		try:
 			blk_dev_p = Dialog_inputbox("Please specify a volume's path")
 			blk_dev.append(str(blk_dev_p.draw()))
@@ -354,6 +357,9 @@ def add_blkdev(cfg):
 			elif (blk_dev == 0):
 				return
 			else:
+				if (not os.path.exists(blk_dev[0]) \
+				and Dialog_yesno('Path does not exist.  Proceed anyway?').draw() == 0):
+					return
 				track += 1
 		except:
 			Dialog_msgbox('Not a valid path').draw()
@@ -394,8 +400,14 @@ def mol_cfg_osx():
 	while step == 0:
 		name_prompt = Dialog_inputbox('Name this configuation')
 		osx_cfg.name = str(name_prompt.draw())
+		### More complex regex
+		name_regex = re.compile("/")
+		### Bail on cancel
 		if (osx_cfg.name == '0'):
 			return
+		### Check for invalid paths (name is a folder in /var/lib/mol)
+		elif (name_regex.search(osx_cfg.name)):
+			Dialog_msgbox('Not a valid configuration name:\n%s' % osx_cfg.name).draw()
 		elif (len(osx_cfg.name) > 0):
 			step +=1
 		else:
@@ -450,7 +462,7 @@ def mol_cfg_osx():
 		### Help display
 		elif (sel == "Help"):
 			blkdev_help()
-		### SCSI manual
+	### SCSI manual
 	while (step == 3):
 		s_menu = scsi_menu(osx_cfg.scsi_devs)
 		sel = s_menu.draw()
@@ -473,26 +485,28 @@ def mol_cfg_osx():
 		elif (sel == 'Help'):
 			scsi_help()
 	### Write it to the config file
-	config_string = "MOL - Mac OS X configuration\n\nName:\t%s\n" % osx_cfg.name
-	config_string = config_string + "RAM:\t%s MB\n" % osx_cfg.ram
-	config_string = config_string + "Disable AltiVec:\t%s\n" % osx_cfg.altivec
-	config_string = config_string + "Enable USB:\t%s\n" % osx_cfg.usb
-	config_string = config_string + "Volumes:\n"
+	config_string = []
+	config_string.append("MOL - Mac OS X configuration\n\nName:\t%s\n" % osx_cfg.name)
+	config_string.append("RAM:\t%s MB\n" % osx_cfg.ram)
+	config_string.append("Disable AltiVec:\t%s\n" % osx_cfg.altivec)
+	config_string.append("Enable USB:\t%s\n" % osx_cfg.usb)
+	config_string.append("Volumes:\n")
 	for volume in osx_cfg.volumes:
 		opts = ""
 		for option in volume[1:]:
 			opts = opts + ' -' + option
-		config_string = config_string + "\t" + volume[0] + opts + "\n"
-	config_string = config_string + "Enable SCSI autoprobing:\t%s\n" % osx_cfg.auto_scsi
+		config_string.append("\t" + volume[0] + opts + "\n")
+	config_string.append("Enable SCSI autoprobing:\t%s\n" % osx_cfg.auto_scsi)
 	if (osx_cfg.auto_scsi == 'no'):
-		config_string = config_string + "SCSI Devices:\n"
+		config_string.append("SCSI Devices:\n")
 		if (len(osx_cfg.scsi_devs) > 0):
 			for device in osx_cfg.scsi_devs:
-				config_string = config_string + "\t" + device + "\n"
+				config_string.append("\t" + device + "\n")
 		else:
-			config_string = config_string + "\tnone\n"
-	config_string = config_string + "\n\nWrite this configuration?"
-	if (Dialog_yesno(config_string).draw() != 0):
+			config_string.append("\tnone\n")
+	config_string.append("\n\nWrite this configuration?")
+	final_config_string = ''.join(config_string)
+	if (Dialog_yesno(final_config_string).draw() != 0):
 		try:
 			osx_cfg.write()
 			Dialog_msgbox('Config file written').draw()
