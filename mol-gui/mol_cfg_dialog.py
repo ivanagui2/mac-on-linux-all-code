@@ -142,7 +142,8 @@ def mol_dialog_add():
 	### Add a Mac Classic OS
 	add.add('OS_9','Mac OS 9 or earlier')
 	### Add a Linux OS
-	add.add('Linux','Linux')
+	### When Linux is booting again
+	# add.add('Linux','Linux')
 	### Exit
 	add.add('Back','Cancel')
 	return add
@@ -162,6 +163,33 @@ def mol_dialog_config():
 	cfg.add('Back', 'Quit without saving')
 	return cfg
 
+
+###############################################################################
+### ROM helper functions
+###############################################################################
+
+### Help for new world ROMs
+def rom_help():
+	Dialog_msgbox("By default, MOL loads the 'Mac OS ROM' file directly \
+	from the System\n\
+	Folder of the startup disk. If this is not desirable (unlikely),\n\
+	then the ROM can be loaded from the linux side by using this\n\
+	feature. Note that the ROM file must be copied to the\n\
+	linux side as a *binary* without any kind of encoding (avoid\n\
+	MacBinary in particular).").draw()
+	return
+
+### Rom menu
+def rom_menu():
+	response = Dialog_menu('Mac OS Classic ROM menu')
+	### Users should probably skip this
+	response.add('Done','Do not specify a ROM (recommended)')
+	### Help!
+	response.add('Help','Help with New World ROMs')
+	### Specify a new-world ROM
+	response.add('Add','Add a New World ROM')
+	return response
+
 ###############################################################################
 ### SCSI helper functions
 ###############################################################################
@@ -172,7 +200,8 @@ def scsi_help():
 	devices attached to your computer in the guest OS.  You can either \
 	allow MOL to add all attached devices automatically by enabling auto \
 	probing of SCSI devices, or you can choose to enter devices manually by\
-	specifying the host, channel, and ID of each device (e.g. 0:2:4).').draw()
+	specifying the host, channel, and ID of each device \
+	(e.g. 0:2:4).').draw()
 	return
 
 ### Dialog for deleting a SCSI device
@@ -189,7 +218,8 @@ def del_scsi_menu(devices):
 def scsi_add(cfg):
 	done = 0
 	while (not done):
-		ask = Dialog_inputbox('Plese specify a SCSI device\nPattern: host:channel:id\nExample: 0:0:1')
+		ask = Dialog_inputbox('Plese specify a SCSI device\n\
+		Pattern: host:channel:id\nExample: 0:0:1')
 		new_scsi = ask.draw()
 		scsi_regex = re.compile("^.:.:.$")
 		if (new_scsi == 0):
@@ -197,8 +227,8 @@ def scsi_add(cfg):
 		elif (not new_scsi):
 			return
 		elif (not scsi_regex.match(new_scsi)):
-			Dialog_msgbox('Not a valid SCSI device path\n\nHint: \
-			Should match the pattern a:b:c\nExample: 0:0:1').draw()
+			Dialog_msgbox('Not a valid SCSI device path\n\n\
+			Hint: Should match the pattern a:b:c\nExample: 0:0:1').draw()
 			return
 		else:
 			 cfg.scsi_devs.append(new_scsi)
@@ -212,6 +242,8 @@ def scsi_menu(devices):
 		for item in devices:
 			device_list = device_list + '\n\t' + item
 	response = Dialog_menu('MOL - SCSI device menu' + device_list)
+	### Continue
+	response.add('Done','Finished')
 	### Auto probing of SCSI devices
 	response.add('Auto','Enable auto probing of SCSI devices')
 	### Add a new device
@@ -222,8 +254,6 @@ def scsi_menu(devices):
 		response.add('Delete','Delete a device')
 	### Help prompt
 	response.add('Help','Help')
-	### Continue
-	response.add('Done','Finished')
 	return response
 
 ###############################################################################
@@ -235,11 +265,11 @@ def blkdev_help():
 	the guest OS to use.  A volume can be an entire disk (e.g. /dev/hda or\
 	/dev/cdrom), a single partition (e.g. /dev/hda3), or an image file \
 	(e.g. /home/user/mol.img).  Also, there are a number of options which \
-	can be specified for each volume, including whether MOL should boot from\
-	it, whether the volume is writeable, and if the volume is a CD-ROM (which\
-	is usefull for the --cdboot option).  Unformatted volumes will require \
-	the -force option (which is found under advanced options).  You must \
-	specify at least one volume.').draw()
+	can be specified for each volume, including whether MOL should boot \
+	from it, whether the volume is writeable, and if the volume is a \
+	CD-ROM (which is usefull for the --cdboot option).  Unformatted \
+	volumes will require the -force option (which is found under advanced \
+	options).  You must specify at least one volume.').draw()
 	return
 
 def ro_dialog():
@@ -264,7 +294,8 @@ def edit_bootflags_menu(device):
 	for option in device[1:]:
 		opts = opts + " -" + option
 	### Draw the menu
-	menu = Dialog_menu('MOL - Edit volume options\n\nSelected volume:\n\t' + device[0] + opts +'\n\nToggle which option?')
+	menu = Dialog_menu('MOL - Edit volume options\n\nSelected volume:\n\
+	\t' + device[0] + opts +'\n\nToggle which option?')
 	### List boot options
 	menu.add('boot','Boot from this volume')
 	menu.add('cd','This is a CD-ROM device')
@@ -307,7 +338,7 @@ def edit_blkdev(cfg,volumes):
 	while (not done):
 		edit_menu = edit_blkdev_menu(volumes)
 		sel = edit_menu.draw()
-		### Bail if user cancels
+		### Bail if user cancles
 		if (sel == 0):
 			return
 		### All done
@@ -358,7 +389,7 @@ def add_blkdev(cfg):
 				return
 			else:
 				if (not os.path.exists(blk_dev[0]) \
-				and Dialog_yesno('Path does not exist.  Proceed anyway?').draw() == 0):
+				and Dialog_yesno('Path does not exist. Proceed anyway?').draw() == 0):
 					return
 				track += 1
 		except:
@@ -376,43 +407,56 @@ def add_blkdev(cfg):
 		blk_dev.append(str(read_prompt.draw()))
 	### Configure adavanced options?
 	if (Dialog_yesno('Would you like to configure advanced options for this volume?').draw() != 0):
+		### FIXME Help dialog for each of these
 		### Force
-		if (Dialog_yesno('Force MOL to use this volume?\n(required for unformatted volumes)').draw() != 0):
+		if (Dialog_yesno('Force MOL to use this volume?\n\
+		(required for unformatted volumes)').draw() != 0):
 			blk_dev.append('force')
 		### Whole
 		if (Dialog_yesno('Export the entire device?').draw() != 0):
 			blk_dev.append('whole')
 		### Boot1?
-		if (Dialog_yesno('Force MOL to boot from this volume?\n(in spite of other boot options)').draw() != 0):
-					blk_dev.append('boot1')
+		if (Dialog_yesno('Force MOL to boot from this volume?\n\
+		(in spite of other boot options)').draw() != 0):
+			blk_dev.append('boot1')
 	cfg.volumes.append(blk_dev)	
 
 ###############################################################################
-### Create OS X configuation
+### Create Guest OS configuation
 ###############################################################################
 
-def mol_cfg_osx():
-	### Create a molrc.osx file
-	osx_cfg = MOL_OS()
-	osx_cfg.type = "osx"
+def mol_cfg_os(type):
+	### Create a OS class handler 
+	mol_cfg = MOL_OS()
+	### OS type passed as argument && and set Fancy name
+	mol_cfg.type = type
 	step = 0
+	if (mol_cfg.type == 'osx'):
+		mol_cfg.fancy = "Mac OS X"
+	elif (mol_cfg.type == 'macos'):
+		mol_cfg.fancy = "Mac OS Classic"
+	elif (mol_cfg.type == 'linux'):
+		mol_cfg.fancy == "Linux"
+	
 	### Configuration needs a name
 	while step == 0:
 		name_prompt = Dialog_inputbox('Name this configuation')
-		osx_cfg.name = str(name_prompt.draw())
-		### More complex regex
+		mol_cfg.name = str(name_prompt.draw())
+		### FIXME More complex regex
 		name_regex = re.compile("/")
 		### Bail on cancel
-		if (osx_cfg.name == '0'):
+		if (mol_cfg.name == '0'):
 			return
-		### Check for invalid paths (name is a folder in /var/lib/mol)
-		elif (name_regex.search(osx_cfg.name)):
-			Dialog_msgbox('Not a valid configuration name:\n%s' % osx_cfg.name).draw()
-		elif (len(osx_cfg.name) > 0):
+		### Check for invalid paths (/var/lib/mol/profiles)
+		elif (name_regex.search(mol_cfg.name)):
+			Dialog_msgbox('Not a valid configuration name:\n%s' % mol_cfg.name).draw()
+		elif (len(mol_cfg.name) > 0):
 			step +=1
 		else:
 			Dialog_msgbox('You must specify a configuaration name').draw()
+	
 	### Guest OS RAM (MB)
+	### MAYBE Add help
 	while step == 1:
 		try:
 			ram_prompt = Dialog_inputbox('RAM (MB)')
@@ -420,100 +464,151 @@ def mol_cfg_osx():
 			if raw_ram == 0:
 				return
 			elif (len(str(raw_ram)) > 0):
-				osx_cfg.ram = str(raw_ram)
-				step += 1
+				### The MAC OS X bootloader requires 128MB
+				if (mol_cfg.type == 'osx' and raw_ram < 128):
+					Dialog_msgbox('OS X requires at least 128 MB of RAM.').draw()
+				else:
+					mol_cfg.ram = str(raw_ram)
+					step += 1
 			else:
 				Dialog_msgbox('You must specify the amount of RAM').draw()
 		except ValueError:
 			Dialog_msgbox('Invalid RAM value').draw()
+	
 	### Give option to disable AltiVec
+	### FIXME Add help
 	if (Dialog_yesno('Disable AltiVec?').draw() == 0):
-		osx_cfg.altivec = "no"
+		mol_cfg.altivec = "no"
 	else:
-		osx_cfg.altivec = "yes"
+		mol_cfg.altivec = "yes"
+	
 	### Enable USB suppot
+	### FIXME Add help
 	if (Dialog_yesno('Enable USB?').draw() == 0):
-		osx_cfg.usb = "no"
+		mol_cfg.usb = "no"
 	else:
-		osx_cfg.usb = "yes"
+		mol_cfg.usb = "yes"
+	
 	### Add block devices to the config
 	while step == 2:
-		volumes_menu = blkdev_menu(osx_cfg.volumes)
+		volumes_menu = blkdev_menu(mol_cfg.volumes)
 		sel = volumes_menu.draw()
 		if (sel == 0):
 			return
 		elif (sel == "Done"):
-			if (len(osx_cfg.volumes) > 0):
+			if (len(mol_cfg.volumes) > 0):
 				step += 1
 			else:
 				Dialog_msgbox('You must specify at least one device.').draw()
 		elif (sel == "Add"):
 			### Add new device to the list
-			add_blkdev(osx_cfg)
+			add_blkdev(mol_cfg)
 		### Edit the block devices
 		elif (sel == "Edit"):
-			edit_blkdev(osx_cfg,osx_cfg.volumes)
+			edit_blkdev(mol_cfg,mol_cfg.volumes)
 		### Delete the block device
 		elif (sel == "Delete"):
-			### Reduce the result by one to get the proper array index
-			index = (int(del_blkdev_menu(osx_cfg.volumes).draw())-1)
+			### -1 to get the proper array index
+			index = (int(del_blkdev_menu(mol_cfg.volumes).draw())-1)
 			### Use the class function for removing a block device
-			osx_cfg.volumes.pop(index)
+			mol_cfg.volumes.pop(index)
 		### Help display
 		elif (sel == "Help"):
 			blkdev_help()
+	
+	### Generic SCSI CD (Mac OS only)
+	###  FIXME Add Help
+	if (mol_cfg.type == 'macos'):
+		if (Dialog_yesno('Use Generic SCSI for CDs?').draw() != 0):
+			mol_cfg.gen_scsi_cd == 'yes'
+		else:
+			mol_cfg.gen_scsi_cd == 'no'
+	
 	### SCSI manual
 	while (step == 3):
-		s_menu = scsi_menu(osx_cfg.scsi_devs)
+		s_menu = scsi_menu(mol_cfg.scsi_devs)
 		sel = s_menu.draw()
 		if (sel == 0):
-			step += 1
+			return
 		elif (sel == 'Auto'):
-			osx_cfg.auto_scsi = "yes"
+			mol_cfg.auto_scsi = "yes"
 			step += 1
 		elif (sel == 'Done'):
-			osx_cfg.auto_scsi = "no"
+			mol_cfg.auto_scsi = "no"
 			step += 1
 		elif (sel == 'Add'):
 			### Add new device to the list
-			scsi_add(osx_cfg)
+			scsi_add(mol_cfg)
 		elif (sel == 'Delete'):
-			### Reduce the returned value by one to get index of SCSI dev to be removed
-			index = (int(del_scsi_menu(osx_cfg.scsi_devs).draw())-1)
+			### -1 to get index of SCSI dev to be removed
+			index = (int(del_scsi_menu(mol_cfg.scsi_devs).draw())-1)
 			### Excise the SCSI device
-			osx_cfg.scsi_devs.pop(index)
+			mol_cfg.scsi_devs.pop(index)
 		elif (sel == 'Help'):
 			scsi_help()
+	
+	### Specify a ROM (Mac OS only)
+	while (step == 4):
+		r_menu = rom_menu()
+		sel = r_menu.draw()
+		if (sel == 0):
+			return
+		elif (sel == 'Done'):
+			step += 1
+		elif (sel == 'Help'):
+			rom_help()
+		elif (sel == 'Add'):
+			rom_prompt = Dialog_inputbox('Please specify the path to your ROM:')
+			nw_rom = rom_prompt.draw()
+			if (os.path.exists(nw_rom)):
+				mol_cfg.rom = nw_rom
+				step += 1
+			else:
+				Dialog_msgbox("Error: The specified path does not exist!").draw()
+
 	### Write it to the config file
+	### Prepare the confirmation string
 	config_string = []
-	config_string.append("MOL - Mac OS X configuration\n\nName:\t%s\n" % osx_cfg.name)
-	config_string.append("RAM:\t%s MB\n" % osx_cfg.ram)
-	config_string.append("Disable AltiVec:\t%s\n" % osx_cfg.altivec)
-	config_string.append("Enable USB:\t%s\n" % osx_cfg.usb)
+	config_string.append("MOL - Guest OS configuration\n\nName:\t%s\n" % mol_cfg.name)
+	config_string.append("Type:\t%s\n" % mol_cfg.fancy)
+	config_string.append("RAM:\t%s MB\n" % mol_cfg.ram)
+	config_string.append("Disable AltiVec:\t%s\n" % mol_cfg.altivec)
+	config_string.append("Enable USB:\t%s\n" % mol_cfg.usb)
 	config_string.append("Volumes:\n")
-	for volume in osx_cfg.volumes:
+	for volume in mol_cfg.volumes:
 		opts = ""
 		for option in volume[1:]:
 			opts = opts + ' -' + option
 		config_string.append("\t" + volume[0] + opts + "\n")
-	config_string.append("Enable SCSI autoprobing:\t%s\n" % osx_cfg.auto_scsi)
-	if (osx_cfg.auto_scsi == 'no'):
+	config_string.append("Enable SCSI autoprobing:\t%s\n" % mol_cfg.auto_scsi)
+	if (mol_cfg.auto_scsi == 'no'):
 		config_string.append("SCSI Devices:\n")
-		if (len(osx_cfg.scsi_devs) > 0):
-			for device in osx_cfg.scsi_devs:
+		if (len(mol_cfg.scsi_devs) > 0):
+			for device in mol_cfg.scsi_devs:
 				config_string.append("\t" + device + "\n")
 		else:
 			config_string.append("\tnone\n")
+	### Generic SCSI for CDs (Mac OS <= 9 only)
+	if (mol_cfg.type == 'macos'):
+		config_string.append("Generic SCSI for CDs:\t%s\n" % mol_cfg.gen_scsi_cd)
+	### New World ROM (Mac OS only)
+	if (mol_cfg.type == 'macos' and mol_cfg.rom != ""):
+		config_string.append("ROM:\t%s\n" % mol_cfg.rom)
 	config_string.append("\n\nWrite this configuration?")
+	### Join the array to create one huge string
 	final_config_string = ''.join(config_string)
 	if (Dialog_yesno(final_config_string).draw() != 0):
 		try:
-			osx_cfg.write()
+			mol_cfg.write()
 			Dialog_msgbox('Config file written').draw()
 		except:
 			Dialog_msgbox('Error: config file not written').draw()
 	else:
 		return
+
+###############################################################################
+### Main loop
+###############################################################################
 
 def mol_cfg_dialog_init():
 	mm = mol_dialog_main()
@@ -532,8 +627,12 @@ def mol_cfg_dialog_init():
 				if result == "Back" or result == 0:
 					done = 1
 				elif result == "OS_X":
-					mol_cfg_osx()
+					mol_cfg_os('osx')
 					done = 1
+				elif result == "OS_9":
+					mol_cfg_os('macos')
+					done = 1
+		
 		### Adjust global mol settings
 		elif result == "Configure":
 			cfg = mol_dialog_config()	
@@ -543,3 +642,9 @@ def mol_cfg_dialog_init():
 				if result == "Back" or result == 0:
 					done = 1
 
+if __name__ == '__main__':
+	mol_cfg_dialog_init()
+
+### TODO:
+# Use HELP texts from the mol_cfg_helper module
+# Add lots of HELP text to the Guest OS configuration process

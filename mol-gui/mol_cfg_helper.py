@@ -103,6 +103,8 @@ class MOL_OS:
 		self.name = "Unknown"
 		### OS Type (osx, macos, linux) - Used to customize config file for guest OS
 		self.type = "osx"
+		### Formal name of Guest OS
+		self.fancy = "Mac OS X"
 		### MB RAM assigned to this configuration
 		self.ram = 256
 		### Altivec Enabled?
@@ -113,6 +115,10 @@ class MOL_OS:
 		self.auto_scsi = 0
 		### If !self.auto_scsi, export devices
 		self.scsi_devs = []
+		### Generic SCSI for CDs (Mac OS only)
+		self.gen_scsi_cd = "yes"
+		### ROM support for Mac OS
+		self.rom = "" 
 		### Enable USB support
 		self.usb = 1
 
@@ -140,21 +146,24 @@ class MOL_OS:
 
 	### TODO: decide whether OS type has a different write function or not
 	def write(self):
-		buffer = ["#  Mac-on-Linux master configuration file for MacOS X booting\n"]
+		buffer = ["#  Mac-on-Linux master configuration file for Guest OS booting\n"]
 		buffer.append("# Configuration name: " + self.name + "\n")
 		buffer.append("include\t\t${etc}/molrc.video\ninclude\t\t${etc}/molrc.input\ninclude\t\t${etc}/molrc.net\ninclude\t\t${etc}/molrc.sound\n")
 		### Start adding options to the config
 		### RAM
-		buffer.append("ram_size:\t\t" + self.ram + "\n")
+		buffer.append("ram_size:\t\t%s\n" % self.ram)
 		### AltiVec
-		buffer.append("disable_alitvec:\t\t" + self.altivec + "\n")
+		buffer.append("disable_altivec:\t\t%s\n" % self.altivec)
 		### USB support
-		buffer.append("enable_usb:\t\t" + self.usb + "\n")
+		buffer.append("enable_usb:\t\t%s\n" % self.usb)
 		### Autoprobe SCSI
-		buffer.append("autoprobe_scsi:\t\t" + self.auto_scsi + "\n")
+		buffer.append("autoprobe_scsi:\t\t%s\n" % self.auto_scsi)
 		### SCSI devices
 		for device in self.scsi_devs:
-			buffer.append('scsi_dev:\t\t"' + device + '"\n')
+			buffer.append("scsi_dev:\t\t%s\n" % device)
+		### Generic SCSI CD (Mac OS <= 9)
+		if self.type == 'macos':
+			buffer.append("generic_scsi_for_cds:\t\t%s\n" % self.gen_scsi_cd)
 		### Block devices
 		for device in self.volumes:
 			dev_path = device[0]
@@ -162,6 +171,9 @@ class MOL_OS:
 			for option in device[1:]:
 				dev_opts = dev_opts + " -" + option
 			buffer.append("blkdev:\t\t" + dev_path + dev_opts + "\n")
+		### New_world ROM (Mac OS only)
+		if self.type == 'macos' and self.rom != "":
+			buffer.append("newworld_rom:\t\t%s\n" % self.rom)
 		### Open and write the file
 		### TODO: need error handling here
 		if not os.path.exists('/var/lib/mol/profiles/' + self.name):
@@ -191,8 +203,6 @@ class MOL_OS:
 			elif (flag == 'rw' and 'ro' in self.volumes[index]):
 				self.volumes[index].remove('ro')
 
-	def test(self):
-		print "This is an explosion"
 
 ### MOL Default configuration
 	### Object for configuration
