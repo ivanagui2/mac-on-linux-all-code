@@ -1,0 +1,6 @@
+mol-gui Changelog
+
+2007-04-23 Nathan Smith <ndansmith@gmail.com>
+	* Added MOL artwork
+	* Addition of BOOT_MOL class using threads to backend
+	* Basic (!) gtk interface for current mol

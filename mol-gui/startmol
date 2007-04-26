@@ -12,10 +12,10 @@ try:
 	from mol_cfg_helper import *
 
 	### If the user wants the gtk frontend
-	if sys.argv[0].count("-gtk"):
+	if sys.argv[1] == "-gtk":
 		from mol_cfg_gtk import *
 	### If the user wants the qt frontend
-	elif sys.argv[0].count("-qt"):
+	elif sys.argv[1] == "-qt":
 		from mol_cfg_qt import *
 	### The user gets the dialog based frontend otherwise...
 	else:

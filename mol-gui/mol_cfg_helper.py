@@ -4,7 +4,43 @@
 ### Provide a backend for different frontends
 
 import os
+from threading import Thread
 
+### Tracking mol sessions
+### To be called by the UI to keep track of mol's activities
+class TRACK_MOL:
+	def __init__(self):
+		### Keep track of which MOL sessions are available 
+		self.sessions = [0, 1, 2, 3, 4, 5, 6, 7]
+
+	def checkout(self):
+		### Take a number
+		try:
+			return self.sessions.pop()
+		except:
+			return -1 
+
+	def checkin(self, mol_session):
+		### Return a number to the pool
+		self.sessions.append(mol_session)
+
+### Booting
+class BOOT_MOL(Thread):
+	### Boot MOL in a thread so GUI loop continues
+	### Import MOL tracker class object, id for this mol session, guest os
+	### type
+	def __init__(self, guest_os=None):
+		Thread.__init__(self)
+		if (guest_os):
+			self.os = " --" + guest_os
+		else:
+			self.os = ""
+		### Star MOL as a daemon so that quitting GUI does not kill it
+		self.setDaemon(1)	
+
+	def run(self):
+		os.system("startmol" + self.os)
+		
 ### Volumes
 class MOL_Volume:
 	def __init__(self, path):
