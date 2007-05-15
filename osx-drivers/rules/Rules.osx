@@ -27,7 +27,7 @@ KERN_CXXFLAGS	= $(KERN_CFLAGS) -fpermissive -arch ppc -x c++ -fno-rtti \
 
 #### 10.2 ##################################
 else
-KERN_CFLAGS	= -fno-builtin -fno-common -force_cpusubtype_ALL -arch ppc 
+KERN_CFLAGS	= -fno-builtin -fno-common -force_cpusubtype_ALL -arch ppc \
 		  -mlong-branch -finline -fno-keep-inline-functions \
 		  -fmessage-length=0 -static -g -nostdinc $(KFRAMEWORK) $(COMMON_CFLAGS)
 
