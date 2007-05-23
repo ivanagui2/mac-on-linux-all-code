@@ -3,7 +3,7 @@
 ###############################################################################
 ### Provide a backend for different frontends
 
-import os
+import os, commands
 from threading import Thread
 
 ### Tracking mol sessions
@@ -12,7 +12,7 @@ class TRACK_MOL:
 	def __init__(self):
 		### Keep track of which MOL sessions are available 
 		self.sessions = [0, 1, 2, 3, 4, 5, 6, 7]
-
+		self.threads = []
 	def checkout(self):
 		### Take a number
 		try:
@@ -36,6 +36,7 @@ class BOOT_MOL(Thread):
 		else:
 			self.os = ""
 		### Star MOL as a daemon so that quitting GUI does not kill it
+		### Once we can kill mol sessions externally, change this
 		self.setDaemon(1)	
 
 	def run(self):
@@ -157,14 +158,12 @@ class MOL_OS:
 		self.rom = "" 
 		### Enable USB support
 		self.usb = 1
-
-		### FIXME Don't include these in GUI?
-		### List of files to include in this config
-		self.include = ["video", "input", "net", "sound"] ### FIXME These are in every config, remove from here
 		### PCI Proxy? (Only works with PIO) - ADVANCED
 		self.pciproxy = 0
 		### PCI Proxy Devices
 		self.pciproxy_devs = []
+		### Shared?
+		self.shared = 1
 
 		### Help Text
 		self.help = {
@@ -175,10 +174,6 @@ class MOL_OS:
 			"enable_usb":"Add support for USB devices unclaimed by the kernel, requires usbfs support",
 		}
 
-		### Initialize paths for MOL profiles directory
-		### /var/lib/mol/profiles will be part of the mol group
-		if not os.path.exists('/var/lib/mol/profiles'):
-			os.mkdir('/var/lib/mol/profiles')
 
 	### TODO: decide whether OS type has a different write function or not
 	def write(self):
@@ -212,13 +207,17 @@ class MOL_OS:
 			buffer.append("newworld_rom:\t\t%s\n" % self.rom)
 		### Open and write the file
 		### TODO: need error handling here
-		if not os.path.exists('/var/lib/mol/profiles/' + self.name):
-			os.mkdir('/var/lib/mol/profiles/' + self.name)
-		config_file = open('/var/lib/mol/profiles/' + self.name + '/molrc.' + self.type,'w')
-		for line in buffer:
-			config_file.write(line)
-		config_file.close()
-
+		if self.shared == 1:
+			config_file = open('/etc/mol/profiles/' + self.name + '.' + self.type,'w')
+			for line in buffer:
+				config_file.write(line)
+			config_file.close()
+		else:
+			config_file = open(gethome() + '/.mol/' + self.name + '.' + self.type,'w')
+			for line in buffer:
+				config_file.write(line)
+			config_file.close()
+			
 	### Alter a boot option on a volume
 	def edit_bootflag(self,device,flag):
 		index = self.volumes.index(device)
@@ -264,5 +263,31 @@ class MOL_OS:
 
 
 ### Get a list of OSes to Boot
+def mol_list_os():
+	bootable_oses = []
+	shared_configs = os.listdir('/etc/mol/profiles')
+	### Shared configurations
+	for config in shared_configs:
+		### Split into name, type
+		new_os = config.split('.')
+		### Add to list of bootable OSes
+		bootable_oses.append(new_os)
+	### Personal configurations
+	home = gethome()
+	user_configs = os.listdir(home + '/.mol')
+	for conf in user_configs:
+		new_os = conf.split('.')
+		bootable_oses.append(new_os)
+	### Return list of bootable OSes to the UI
+	return bootable_oses
 
+# Returns a string of the user's home direcotry
+def gethome():
+	raw_home = commands.getstatusoutput('echo $HOME')	# e.g. '/home/foo'
+	home = str(raw_home[1])
+	return home
 
+### Initialize ~/.mol directory
+home = gethome()
+if not os.path.exists(home + '/.mol'):
+	os.mkdir(home + '/.mol')

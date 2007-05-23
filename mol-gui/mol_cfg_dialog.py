@@ -548,23 +548,24 @@ def mol_cfg_os(type):
 			scsi_help()
 	
 	### Specify a ROM (Mac OS only)
-	while (step == 4):
-		r_menu = rom_menu()
-		sel = r_menu.draw()
-		if (sel == 0):
-			return
-		elif (sel == 'Done'):
-			step += 1
-		elif (sel == 'Help'):
-			rom_help()
-		elif (sel == 'Add'):
-			rom_prompt = Dialog_inputbox('Please specify the path to your ROM:')
-			nw_rom = rom_prompt.draw()
-			if (os.path.exists(nw_rom)):
-				mol_cfg.rom = nw_rom
+	if (mol_cfg.type == 'macos'):
+		while (step == 4):
+			r_menu = rom_menu()
+			sel = r_menu.draw()
+			if (sel == 0):
+				return
+			elif (sel == 'Done'):
 				step += 1
-			else:
-				Dialog_msgbox("Error: The specified path does not exist!").draw()
+			elif (sel == 'Help'):
+				rom_help()
+			elif (sel == 'Add'):
+				rom_prompt = Dialog_inputbox('Please specify the path to your ROM:')
+				nw_rom = rom_prompt.draw()
+				if (os.path.exists(nw_rom)):
+					mol_cfg.rom = nw_rom
+					step += 1
+				else:
+					Dialog_msgbox("Error: The specified path does not exist!").draw()
 
 	### Write it to the config file
 	### Prepare the confirmation string

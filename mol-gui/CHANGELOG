@@ -1,5 +1,27 @@
 mol-gui Changelog
 
+2007-05-22 Nathan Smith <ndansmith@gmail.com>
+	* New Guest OS configuration
+	* Shared/Personal config option added to backend
+
+2007-05-18 Nathan Smith <ndansmith@gmail.com>
+	* User ~/.mol creation on startup
+	* /etc/mol/profiles creation handled by installer
+
+2007-05-15 Nathan Smith <ndansmith@gmail.com>
+	* Rechanged profiles path to /etc/mol/profiles
+	* Minor Bugfixes
+
+2007-04-30 Nathan Smith <ndansmith@gmail.com>
+	* Changed profiles path to /usr/share/mol/profiles
+	* Minor bugfixes in dialog-ui
+	* Addition of Guest OS finding function
+	* Option for shared and private configs
+
+2007-04-29 Nathan Smith <ndansmith@gmail.com>
+	* Updated MOL and Linux artwork
+	* Changed GUI layout to "gen2"
+
 2007-04-23 Nathan Smith <ndansmith@gmail.com>
 	* Added MOL artwork
 	* Addition of BOOT_MOL class using threads to backend
