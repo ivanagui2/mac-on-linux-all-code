@@ -13,7 +13,7 @@
   <property name="modal">False</property>
   <property name="resizable">False</property>
   <property name="destroy_with_parent">False</property>
-  <property name="icon">images/mol_icon.png</property>
+  <property name="icon">mol_icon.png</property>
   <property name="decorated">True</property>
   <property name="skip_taskbar_hint">False</property>
   <property name="skip_pager_hint">False</property>
@@ -51,7 +51,7 @@
 		  <child>
 		    <widget class="GtkImage" id="mol_sidebar_images">
 		      <property name="visible">True</property>
-		      <property name="pixbuf">images/mol_a_big.png</property>
+		      <property name="pixbuf">mol_a_big.png</property>
 		      <property name="xalign">0.5</property>
 		      <property name="yalign">0.5</property>
 		      <property name="xpad">0</property>
@@ -467,7 +467,7 @@
       <child>
 	<widget class="GtkImage" id="mol_info_image">
 	  <property name="visible">True</property>
-	  <property name="pixbuf">images/mol_icon.png</property>
+	  <property name="pixbuf">mol_icon.png</property>
 	  <property name="xalign">0.5</property>
 	  <property name="yalign">0.5</property>
 	  <property name="xpad">0</property>
