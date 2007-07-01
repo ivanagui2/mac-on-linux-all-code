@@ -487,7 +487,7 @@ class MOL_GUI:
 		os_x_boot.start()
 		### Keep track of active threads
 		### TODO find way to kill threads
-		self.thread_track.append(os_x_boot)
+		# self.thread_track.append(os_x_boot)
 
 	### Boot Mac Classic
 	def boot_macos(self,w=None, cdrom=None):
@@ -495,7 +495,7 @@ class MOL_GUI:
 		if cdrom:
 			macos_boot.cdrom = True
 		macos_boot.start()
-		self.thread_track.append(macos_boot)
+		# self.thread_track.append(macos_boot)
 
 	### Boot Linux
 	def boot_linux(self,w=None, cdrom=None):
@@ -503,7 +503,7 @@ class MOL_GUI:
 		if cdrom:
 			linux_boot.cdrom = True
 		linux_boot.start()
-		self.thread_track(linux_boot)
+		# self.thread_track(linux_boot)
 
 	### About MOL
 	def about_mol(self,w=None):

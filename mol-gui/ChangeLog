@@ -1,4 +1,6 @@
 2007-06-30 Nathan Smith <ndansmith@gmail.com>
+	* GTK: Bug fixes
+	* GTK: Added CD Boot option
 	* GTK: Change from icon box to list view
 
 2007-05-27 Nathan Smith <ndansmith@gmail.com>
