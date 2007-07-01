@@ -380,11 +380,28 @@ class MOL_GUI:
 		### Main window object
 		self.window = self.gui.get_widget("main_window")
 		### OS Selection menu setup
-		self.icon_box = self.gui.get_widget("os_view")
+		self.os_box = self.gui.get_widget("os_box")
+		self.os_box.set_headers_visible(False)
+		self.column0 = gtk.TreeViewColumn("Icon")
+		self.column1 = gtk.TreeViewColumn("Name")
+		### TODO Save for "new" version of MOL 
+		# self.column2 = gtk.TreeViewColumn("Type")
+		self.rend0 = gtk.CellRendererPixbuf()
+		self.rend1 = gtk.CellRendererText()
+		### TODO "new" MOL
+		# self.rend2 = gtk.CellRendererText()
+		self.column0.pack_start(self.rend0, True)
+		self.column0.add_attribute(self.rend0, 'pixbuf', 0)
+		self.column1.pack_start(self.rend1, True)
+		self.column1.add_attribute(self.rend1, 'text', 1)
+		### TODO "new" MOL
+		# self.column2.pack_start(self.rend2, True)
+		# self.column2.add_attribute(self.rend2, 'text', 2)
+		self.os_box.append_column(self.column0)
+		self.os_box.append_column(self.column1)
+		# self.os_box.append_column(self.column2)
 		### Generate OS list just-in-time
 		self.get_os_list()
-		self.icon_box.set_pixbuf_column(1)
-		self.icon_box.set_text_column(0)
 		### Thread tracking 
 		self.thread_track = TRACK_MOL()
 		### About window
@@ -394,7 +411,9 @@ class MOL_GUI:
 		### Connect events to callbacks
 		dic = { "on_add_os_b_clicked" : self.add_os,
 			"on_boot_b_clicked" : self.boot_chooser,
+			"on_cd_boot_clicked" : self.cd_boot_chooser,
 			"on_about_b_clicked" : self.about_mol,
+			"on_mol_info_ok_clicked" : self.about_hide,
 			"on_mol_quit_b_clicked" : gtk.main_quit }
 		self.gui.signal_autoconnect(dic)
 		### Quit on attempted close
@@ -404,13 +423,22 @@ class MOL_GUI:
 	def get_os_list(self,w=None):
 		### Get list of bootable OSes
 		bootable_oses = mol_list_os()
-		self.os_list = gtk.ListStore(str, gtk.gdk.Pixbuf, str)
-		for config in bootable_oses:
-			name = config[0]
-			type = config[1]
-			icon = gtk.gdk.pixbuf_new_from_file("images/" + type + ".png")
-			self.os_list.append([name, icon, type])
-		self.icon_box.set_model(self.os_list)
+		self.os_list = gtk.ListStore(gtk.gdk.Pixbuf, str, str)
+		### TODO "new" MOL
+	#	for config in bootable_oses:
+	#		name = config[0]
+	#		type = config[1]
+	#		icon = gtk.gdk.pixbuf_new_from_file("images/" + type + ".png")
+	#		self.os_list.append([icon, name, type])
+
+		### TODO Abs path for icons
+		osx_icon = gtk.gdk.pixbuf_new_from_file("images/osx.png")
+		macos_icon = gtk.gdk.pixbuf_new_from_file("images/macos.png")
+		linux_icon = gtk.gdk.pixbuf_new_from_file("images/linux.png")
+		self.os_list.append([osx_icon, 'Mac OS X', 'osx'])
+		self.os_list.append([macos_icon, 'Mac OS', 'macos'])
+		self.os_list.append([linux_icon, 'Linux', 'linux'])
+		self.os_box.set_model(self.os_list)
 		
 	#######################################################################
 	### Callback functions
@@ -425,11 +453,10 @@ class MOL_GUI:
 	
 	### Boot button
 	def boot_chooser(self,w=None):
-		os = self.icon_box.get_selected_items()
-		if len(os) == 0:
+		(model, iter)  = self.os_box.get_selection().get_selected()
+		if not iter:
 			return
-		index = os[0][0]
-		type = self.os_list[index][2]
+		type = model.get_value(iter, 2)
 		if type == "osx":
 			self.boot_os_x()
 		elif type == "macos":
@@ -437,10 +464,25 @@ class MOL_GUI:
 		elif type == "linux":
 			self.boot_linux()
 
+	### CD Boot button
+	def cd_boot_chooser(self,w=None):
+		(model, iter)  = self.os_box.get_selection().get_selected()
+		if not iter:
+			return
+		type = model.get_value(iter, 2)
+		if type == "osx":
+			self.boot_os_x(cdrom=True)
+		elif type == "macos":
+			self.boot_macos(cdrom=True)
+		elif type == "linux":
+			self.boot_linux(cdrom=True)
+
 	### Boot OS X
-	def boot_os_x(self,w=None):
+	def boot_os_x(self,w=None, cdrom=None):
 		### Create boot mol thread object
 		os_x_boot = BOOT_MOL("osx")
+		if cdrom:
+			os_x_boot.cdrom = True
 		### State the thread
 		os_x_boot.start()
 		### Keep track of active threads
@@ -448,14 +490,18 @@ class MOL_GUI:
 		self.thread_track.append(os_x_boot)
 
 	### Boot Mac Classic
-	def boot_macos(self,w=None):
+	def boot_macos(self,w=None, cdrom=None):
 		macos_boot = BOOT_MOL()
+		if cdrom:
+			macos_boot.cdrom = True
 		macos_boot.start()
 		self.thread_track.append(macos_boot)
 
 	### Boot Linux
-	def boot_linux(self,w=None):
+	def boot_linux(self,w=None, cdrom=None):
 		linux_boot = BOOT_MOL("linux")
+		if cdrom:
+			linux_boot.cdrom = True
 		linux_boot.start()
 		self.thread_track(linux_boot)
 
@@ -478,11 +524,11 @@ mol.main()
 
 ###
 # TODO
+# 'New' MOL
 # Need a register of active threads
 # Need to find a way to alter BOOT_MOL handler names for multiple instances of
 #	one Guest-OS type
 # Configure mol options (video etc)
-# Boot from CD
 # Edit existing configurations
 # Power down button
 # Remember last booted OS

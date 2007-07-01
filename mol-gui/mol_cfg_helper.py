@@ -38,9 +38,13 @@ class BOOT_MOL(Thread):
 		### Star MOL as a daemon so that quitting GUI does not kill it
 		### Once we can kill mol sessions externally, change this
 		self.setDaemon(1)	
+		self.cdrom = False
 
 	def run(self):
-		os.system("startmol" + self.os)
+		if self.cdrom:
+			os.system("startmol" + self.os + " --cdboot")
+		else:	
+			os.system("startmol" + self.os)
 		
 ### Volumes
 class MOL_Volume:

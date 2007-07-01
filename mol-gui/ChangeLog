@@ -1,4 +1,5 @@
-mol-gui Changelog
+2007-06-30 Nathan Smith <ndansmith@gmail.com>
+	* GTK: Change from icon box to list view
 
 2007-05-27 Nathan Smith <ndansmith@gmail.com>
 	* Minor UI fixes
