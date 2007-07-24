@@ -17,6 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 import sys
+from commands import getstatusoutput as status
 from getopt import gnu_getopt
 try:
 	### Import the backend
@@ -34,7 +35,17 @@ class Startmol:
 		self.qt = False
 		self.help = False
 		self.version = False
+		self.list = False
 		self.profiles = ""
+
+		### MOL information
+		self.libdir = status('molrcget -p')[1]
+		self.bindir = self.libdir + "/bin/"
+		self.moddir = self.libdir + "/modules"
+		self.v = status('molrcget -V')[1]
+		self.kernel = status(self.bindir + 'mol_uname -p')[1]
+		self.mods = status(self.bindir + 'mol_uname -l ' + self.moddir + ' /usr/local/lib/mol/' + self.v + '/modules /lib/modules /usr/lib/mol/' + self.v + '/modules')[1]
+		self.modules = self.mods.splitlines()
 
 		### Get the command-line arguments
 		self.parse_args()
@@ -42,6 +53,14 @@ class Startmol:
 		### Help dialog trumps
 		if (self.help):
 			self.show_help()
+		### Version semi-trumps
+		elif (self.version):
+			self.show_version()
+			sys.exit(0)
+		### Module list is the antepenult
+		elif (self.list):
+			self.list_mods()
+			sys.exit(0)
 
 		### MOL cannot load more than one profile at a time from the command line
 		if len(self.profiles) > 1:
@@ -116,7 +135,7 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 	def parse_args(self):
 		### Parse the arguments or fail
 		try:
-			self.opts, self.profiles = gnu_getopt(sys.argv[1:], "VXadeghln:qx", ["alt","cdboot","config=","datadir=","debug","detach","elf=","exact","gtk","help","kernel=","keyconfig","libdir=","linux","list","loadonly","newworld","noautoboot","oldworld","osx","qt","ram=","res=","session=","test","version"."vt=","zapnvram"])
+			self.opts, self.profiles = gnu_getopt(sys.argv[1:], "VXadeghln:qx", ["alt","cdboot","config=","datadir=","debug","detach","elf=","exact","gtk","help","kernel=","keyconfig","libdir=","linux","list","loadonly","newworld","noautoboot","oldworld","osx","qt","ram=","res=","session=","test","version","vt=","zapnvram"])
 		except getopt.GetoptError:
 			sys.exit(1)
 		### Set values based on options
@@ -130,6 +149,24 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 				self.help = True 
 			if option in ("-V","--version"):
 				self.version = True
+			if option in ("--list"):
+				self.list = True
+
+	### Display verison information
+	def show_version(self):
+		print "Mac-on-Linux %s" % self.v
+		print "Copyright (C) 1997-2003 Samuel Rydh <samuel@ibrium.se>"
+
+	### list kernel modules
+	def list_mods(self):
+		print "--------------------------------------------------------------"
+		print "  Running kernel:\t%s" % self.kernel
+		print "--------------------------------------------------------------"
+		print "  Available modules:"
+		for each in self.modules:
+			mod = each.rsplit('/',1)
+			print "    %(module)s\tin %(path)s" % {'module': mod[-1], 'path': mod[0].rsplit('/modules')[0]}
+		print "--------------------------------------------------------------"
 
 	### Start one of the GUIs:
 	def start_gui(self):
@@ -159,4 +196,3 @@ if __name__ == '__main__':
 	mol = Startmol()
 
 # TODO:
-# Version dialog
