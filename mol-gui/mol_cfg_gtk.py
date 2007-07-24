@@ -519,8 +519,12 @@ class MOL_GUI:
 		gtk.main()
 
 ### Start 'er up
-mol = MOL_GUI()
-mol.main()
+def mol_cfg_gtk_init():
+	mol = MOL_GUI()
+	mol.main()
+
+if __name__ == '__main__':
+	mol_cfg_gtk_init()
 
 ###
 # TODO
