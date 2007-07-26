@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 
-import sys
+import sys, os
 from commands import getstatusoutput as status
-from getopt import gnu_getopt
+from getopt import gnu_getopt, GetoptError
 try:
 	### Import the backend
 	from mol_cfg_helper import *
@@ -36,16 +36,18 @@ class Startmol:
 		self.help = False
 		self.version = False
 		self.list = False
+		self.debug = False
 		self.profiles = ""
+		# FIXME get rid of this testcase
+		self.molargs = ""
 
 		### MOL information
-		self.libdir = status('molrcget -p')[1]
+		self.libdir = self.molrcget('-p')
 		self.bindir = self.libdir + "/bin/"
 		self.moddir = self.libdir + "/modules"
-		self.v = status('molrcget -V')[1]
+		self.v = self.molrcget('-V')
 		self.kernel = status(self.bindir + 'mol_uname -p')[1]
-		self.mods = status(self.bindir + 'mol_uname -l ' + self.moddir + ' /usr/local/lib/mol/' + self.v + '/modules /lib/modules /usr/lib/mol/' + self.v + '/modules')[1]
-		self.modules = self.mods.splitlines()
+		self.os = status('uname')[1]
 
 		### Get the command-line arguments
 		self.parse_args()
@@ -71,11 +73,27 @@ class Startmol:
 			sys.exit(1)
 		### Boot the selected profile, skip the GUI
 		elif len(self.profiles) == 1:
+
+			### Check for instances of MOL already running
+			self.check_lock()
+
+			### Check for fb video
+			# If molrcget returns normal exit status, console video is enabled
+			# and the check_fb is necessary.  However, 0 exit status returns 
+			# false in Python, so we must reverse the logic
+			if not os.system('molrcget -b enable_console_video --' + self.molargs):
+				self.check_fb()
+
+			### BOOT mol itself
 			self.boot_mol()
 
 		### Run the GUI if no profiles are passed
 		else:
 			self.start_gui()
+
+	### molrcget function
+	def molrcget(self, arg):
+		return status('molrcget ' + arg + ' --' + self.molargs)[1]
 
 	### Display help text
 	def show_help(self):
@@ -131,12 +149,13 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 		print self.help_text
 		sys.exit(0)
 
-	### ARgument parsing
+	### Argument parsing
 	def parse_args(self):
-		### Parse the arguments or fail
 		try:
-			self.opts, self.profiles = gnu_getopt(sys.argv[1:], "VXadeghln:qx", ["alt","cdboot","config=","datadir=","debug","detach","elf=","exact","gtk","help","kernel=","keyconfig","libdir=","linux","list","loadonly","newworld","noautoboot","oldworld","osx","qt","ram=","res=","session=","test","version","vt=","zapnvram"])
-		except getopt.GetoptError:
+			self.opts, self.profiles = gnu_getopt(sys.argv[1:], "VXadeghlmn:qx", ["alt","cdboot","config=","datadir=","debug","detach","elf=","exact","gtk","help","kernel=","keyconfig","libdir=","linux","list","loadonly","macos","newworld","noautoboot","oldworld","osx","qt","ram=","res=","session=","test","version","vt=","zapnvram"])
+		except GetoptError, e:
+			print "Error! Invalid option: %s" % e
+			print "Try startmol --help for assistance"
 			sys.exit(1)
 		### Set values based on options
 		### TODO implement all options
@@ -151,6 +170,12 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 				self.version = True
 			if option in ("--list"):
 				self.list = True
+			if option in ("-X","--osx"):
+				self.molargs += " %s" % option
+			if option in ("--linux"):
+				self.molargs += " %s" % option
+			if option in ("-d","--debug"):
+				self.debug = True
 
 	### Display verison information
 	def show_version(self):
@@ -159,14 +184,53 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 
 	### list kernel modules
 	def list_mods(self):
+		# Get lits of modules
+		self.mods = status(self.bindir + 'mol_uname -l ' + self.moddir + ' /usr/local/lib/mol/' + self.v + '/modules /lib/modules /usr/lib/mol/' + self.v + '/modules')[1]
+		self.modules = self.mods.splitlines()
 		print "--------------------------------------------------------------"
 		print "  Running kernel:\t%s" % self.kernel
 		print "--------------------------------------------------------------"
 		print "  Available modules:"
 		for each in self.modules:
-			mod = each.rsplit('/',1)
-			print "    %(module)s\tin %(path)s" % {'module': mod[-1], 'path': mod[0].rsplit('/modules')[0]}
+			mod = each.rsplit('/modules/',1)
+			print "    %(module)s\tin %(path)s" % {'module': mod[-1], 'path': mod[0]}
 		print "--------------------------------------------------------------"
+
+	### Check for a lockfile
+	def check_lock(self):
+		self.lockfile = self.molrcget('-L')
+		if not os.path.exists(self.lockfile):
+			return
+		### MOL is already running, abort!
+		else:
+			a = open(self.lockfile)
+			self.pid = a.read().strip()
+			a.close()	
+			print "Mac-on-Linux is already running with pid %s" % self.pid
+			print "according to the lockfile %s" % self.lockfile
+			sys.exit(1)
+
+	### Check for framebuffer information
+	def check_fb(self):
+		if not os.path.exists('/dev/fb0'):
+			# Running as root?
+			if status('echo $UID')[1] == 0:
+				os.system('mknod --mode=600 /dev/fb0 c 29 0')
+			# Inform user of the problem
+			else:
+				print "The framebuffer device /dev/fb0 is missing."
+				print "Run 'mknod /dev/fb0 c 29 0' to create it"
+				sys.exit(1)
+		### Is console video configured?
+		if self.os == "Linux":
+			fbdev_prefs = self.molrcget('-F fbdev_prefs')
+			if not os.path.exists(fbdev_prefs):
+				print "*************************************************************"
+				print " No video modes have been configured. Please run 'molvconfig'"
+				print " as root to configure full screen video or disable console"
+				print " video in /etc/mol/molrc.video."
+				print "*************************************************************"
+				sys.exit(1)
 
 	### Start one of the GUIs:
 	def start_gui(self):
@@ -186,13 +250,22 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 			import mol_cfg_dialog
 			mol_cfg_dialog.mol_cfg_dialog_init()
 
+	### Run the MOL debugger
+	def debug_mol(self):
+		### Test for debug support first
+		pass
+
 	### Grab all of the options and boot mol
 	### TODO finish this
 	def boot_mol(self):
-		pass
+		self.mol_bin = self.bindir + '/mol'
+		self.mol_exec_string = (self.mol_bin + self.molargs)
+		os.system(self.mol_exec_string)
 
 ### Start er up
 if __name__ == '__main__':
 	mol = Startmol()
 
 # TODO:
+# finish argparsing
+# debugging support
