@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 import sys, os
-from commands import getstatusoutput as status
+from commands import getoutput as status
 from getopt import gnu_getopt, GetoptError
 try:
 	### Import the backend
@@ -38,7 +38,6 @@ class Startmol:
 		self.list = False
 		self.debug = False
 		self.profiles = ""
-		# FIXME get rid of this testcase
 		self.molargs = ""
 
 		### MOL information
@@ -46,8 +45,8 @@ class Startmol:
 		self.bindir = self.libdir + "/bin/"
 		self.moddir = self.libdir + "/modules"
 		self.v = self.molrcget('-V')
-		self.kernel = status(self.bindir + 'mol_uname -p')[1]
-		self.os = status('uname')[1]
+		self.kernel = status(self.bindir + 'mol_uname -p')
+		self.os = status('uname')
 
 		### Get the command-line arguments
 		self.parse_args()
@@ -93,11 +92,11 @@ class Startmol:
 
 	### molrcget function
 	def molrcget(self, arg):
-		return status('molrcget ' + arg + ' --' + self.molargs)[1]
+		return status('molrcget ' + arg + ' --' + self.molargs)
 
 	### Display help text
 	def show_help(self):
-		self.help_text = """Usage: startmol [OPTIONS] 
+		self.help_text = """Usage: startmol [OPTIONS] <profile>
 Starts Mac-on-Linux (MOL)
  
 Graphical User Interface:
@@ -108,7 +107,6 @@ Graphical User Interface:
 Kernel Module Loading:
   -e,  --exact         require an exact kernel version match
   -a                   allow a small kernel module version mismatch
-  -l,  --loadonly      do not start MOL, just load the kernel module(s)
        --list          list available MOL kernel modules
  
 Client OS Selection:
@@ -152,30 +150,49 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 	### Argument parsing
 	def parse_args(self):
 		try:
-			self.opts, self.profiles = gnu_getopt(sys.argv[1:], "VXadeghlmn:qx", ["alt","cdboot","config=","datadir=","debug","detach","elf=","exact","gtk","help","kernel=","keyconfig","libdir=","linux","list","loadonly","macos","newworld","noautoboot","oldworld","osx","qt","ram=","res=","session=","test","version","vt=","zapnvram"])
+			self.opts, self.profiles = gnu_getopt(sys.argv[1:], "VXadeghmn:qx", ["alt","cdboot","config=","datadir=","debug","detach","elf=","exact","gtk","help","kernel=","keyconfig","libdir=","linux","list","macos","newworld","noautoboot","oldworld","osx","qt","ram=","res=","session=","test","version","vt=","zapnvram"])
 		except GetoptError, e:
-			print "Error! Invalid option: %s" % e
-			print "Try startmol --help for assistance"
+			print "Error: %s." % e
+			print "Try startmol --help for assistance."
 			sys.exit(1)
 		### Set values based on options
 		### TODO implement all options
 		for option, data in self.opts:
+			### There are two basic types of options here
+			# Some options are used by startmol and others
+			# are passed directly to the mol binary
+			# Additionally, options with arguments to be passed
+			# to mol require a little formatting
+
+			### Grab startmol's runtime options
 			if option in ("-g","--gtk"):
 				self.gtk = True
-			if option in ("-q","--qt"):
+			elif option in ("-q","--qt"):
 				self.qt = True
-			if option in ("-h","--help"):
+			elif option in ("-h","--help"):
 				self.help = True 
-			if option in ("-V","--version"):
+			elif option in ("-V","--version"):
 				self.version = True
-			if option in ("--list"):
+			elif option == "--list":
 				self.list = True
-			if option in ("-X","--osx"):
-				self.molargs += " %s" % option
-			if option in ("--linux"):
-				self.molargs += " %s" % option
-			if option in ("-d","--debug"):
+			elif option in ("-d","--debug"):
 				self.debug = True
+			### Some mol options require formatting
+			elif option == "-n":
+				self.add_opt('-%s' % data)
+			elif option in ("--session","--ram","--config","--libdir","--vt"):
+				self.add_opt('%s=%s' % (option,data))
+			### The arguments require an absolute path
+			elif option in ("--elf","--kernel"):
+				abs_path = os.path.abspath(data)
+				self.add_opt('%s=%s' % (option,abs_path))
+			### Non startmol, non-argument options go to mol binary
+			else:
+				self.add_opt(option)
+
+	### Add options to molargs
+	def add_opt(self,opt):
+		self.molargs += " %s" % opt
 
 	### Display verison information
 	def show_version(self):
@@ -185,7 +202,7 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 	### list kernel modules
 	def list_mods(self):
 		# Get lits of modules
-		self.mods = status(self.bindir + 'mol_uname -l ' + self.moddir + ' /usr/local/lib/mol/' + self.v + '/modules /lib/modules /usr/lib/mol/' + self.v + '/modules')[1]
+		self.mods = status(self.bindir + 'mol_uname -l ' + self.moddir + ' /usr/local/lib/mol/' + self.v + '/modules /lib/modules /usr/lib/mol/' + self.v + '/modules')
 		self.modules = self.mods.splitlines()
 		print "--------------------------------------------------------------"
 		print "  Running kernel:\t%s" % self.kernel
@@ -214,7 +231,7 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 	def check_fb(self):
 		if not os.path.exists('/dev/fb0'):
 			# Running as root?
-			if status('echo $UID')[1] == 0:
+			if status('echo $UID') == 0:
 				os.system('mknod --mode=600 /dev/fb0 c 29 0')
 			# Inform user of the problem
 			else:
@@ -253,13 +270,16 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 	### Run the MOL debugger
 	def debug_mol(self):
 		### Test for debug support first
+		self.mol_dbg = self.bindir + 'moldeb'
 		pass
 
 	### Grab all of the options and boot mol
 	### TODO finish this
 	def boot_mol(self):
-		self.mol_bin = self.bindir + '/mol'
+		self.mol_bin = self.bindir + 'mol'
 		self.mol_exec_string = (self.mol_bin + self.molargs)
+		### FIXME back to normal function
+		print self.mol_exec_string
 		os.system(self.mol_exec_string)
 
 ### Start er up
@@ -269,3 +289,4 @@ if __name__ == '__main__':
 # TODO:
 # finish argparsing
 # debugging support
+# --datadir --libdir are br0ken
