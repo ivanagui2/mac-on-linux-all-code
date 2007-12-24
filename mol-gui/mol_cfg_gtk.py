@@ -20,15 +20,15 @@ import sys, os
 from threading import Thread
 from mol_cfg_helper import *
 
-try:
-	import pygtk
-	pygtk.require('2.0')
-	import gtk
-	import gtk.glade
-	import molimg
-except:
-	print "Error importing modules.  Did you install Mac-on-Linux \
-	correctly?"
+#try:
+import pygtk
+pygtk.require('2.0')
+import gtk
+import gtk.glade
+import molimg
+#except:
+#	print "Error importing modules.  Did you install Mac-on-Linux \
+#	correctly?"
 
 ### GUI class for configuring a new guest OS
 class CONFIG_OS:
@@ -374,6 +374,8 @@ class CONFIG_OS:
 ### Main GUI class
 class MOL_GUI:
 	def __init__(self):
+		### Initalize some variables
+		self.molargs = ""
 		### Load the glade file
 		self.gladefile="mol-gui.glade"
 		self.gui = gtk.glade.XML(self.gladefile)
@@ -381,25 +383,23 @@ class MOL_GUI:
 		self.window = self.gui.get_widget("main_window")
 		### OS Selection menu setup
 		self.os_box = self.gui.get_widget("os_box")
-		self.os_box.set_headers_visible(False)
-		self.column0 = gtk.TreeViewColumn("Icon")
+		self.os_box.set_headers_visible(True)
+		self.column0 = gtk.TreeViewColumn("")
 		self.column1 = gtk.TreeViewColumn("Name")
-		### TODO Save for "new" version of MOL 
-		# self.column2 = gtk.TreeViewColumn("Type")
+		self.column2 = gtk.TreeViewColumn("Type")
 		self.rend0 = gtk.CellRendererPixbuf()
 		self.rend1 = gtk.CellRendererText()
-		### TODO "new" MOL
-		# self.rend2 = gtk.CellRendererText()
+		self.rend2 = gtk.CellRendererText()
+		self.rend3 = gtk.CellRendererText()
 		self.column0.pack_start(self.rend0, True)
 		self.column0.add_attribute(self.rend0, 'pixbuf', 0)
 		self.column1.pack_start(self.rend1, True)
 		self.column1.add_attribute(self.rend1, 'text', 1)
-		### TODO "new" MOL
-		# self.column2.pack_start(self.rend2, True)
-		# self.column2.add_attribute(self.rend2, 'text', 2)
+		self.column2.pack_start(self.rend2, True)
+		self.column2.add_attribute(self.rend2, 'text', 2)
 		self.os_box.append_column(self.column0)
 		self.os_box.append_column(self.column1)
-		# self.os_box.append_column(self.column2)
+		self.os_box.append_column(self.column2)
 		### Generate OS list just-in-time
 		self.get_os_list()
 		### Thread tracking 
@@ -410,34 +410,43 @@ class MOL_GUI:
 			self.about_window.connect("delete-event", self.about_hide)
 		### Connect events to callbacks
 		dic = { "on_add_os_b_clicked" : self.add_os,
+			"on_del_os_b_clicked" : self.del_warn,
 			"on_boot_b_clicked" : self.boot_chooser,
 			"on_cd_boot_clicked" : self.cd_boot_chooser,
 			"on_about_b_clicked" : self.about_mol,
 			"on_mol_info_ok_clicked" : self.about_hide,
-			"on_mol_quit_b_clicked" : gtk.main_quit }
+			"on_cancel_del_clicked" : self.del_warn_hide,
+			"on_confirm_del_clicked" : self.del_os,
+			"on_quit_b_clicked" : gtk.main_quit }
 		self.gui.signal_autoconnect(dic)
 		### Quit on attempted close
 		if (self.window):
 			self.window.connect("destroy", gtk.main_quit)
 	
+	### Add options to molargs to be passed to BOOT_MOL class (and then to mol binary)
+	def add_opt(self,opt):
+		# Each option is added to the molargs string with a separating space
+		# e.g. --cdboot -X -5
+		self.molargs += " %s" % opt
+
 	def get_os_list(self,w=None):
 		### Get list of bootable OSes
 		bootable_oses = mol_list_os()
-		self.os_list = gtk.ListStore(gtk.gdk.Pixbuf, str, str)
-		### TODO "new" MOL
-	#	for config in bootable_oses:
-	#		name = config[0]
-	#		type = config[1]
-	#		icon = gtk.gdk.pixbuf_new_from_file("images/" + type + ".png")
-	#		self.os_list.append([icon, name, type])
+		self.os_list = gtk.ListStore(gtk.gdk.Pixbuf, str, str, str)
+		for config in bootable_oses:
+			name = config[0]
+			type = config[1]
+			path = config[2]
+			### TODO Abs path for icons
+			icon = gtk.gdk.pixbuf_new_from_file("images/" + type + ".png")
+			self.os_list.append([icon, name, type, path])
 
-		### TODO Abs path for icons
-		osx_icon = gtk.gdk.pixbuf_new_from_file("images/osx.png")
-		macos_icon = gtk.gdk.pixbuf_new_from_file("images/macos.png")
-		linux_icon = gtk.gdk.pixbuf_new_from_file("images/linux.png")
-		self.os_list.append([osx_icon, 'Mac OS X', 'osx'])
-		self.os_list.append([macos_icon, 'Mac OS', 'macos'])
-		self.os_list.append([linux_icon, 'Linux', 'linux'])
+		#osx_icon = gtk.gdk.pixbuf_new_from_file("images/osx.png")
+		#macos_icon = gtk.gdk.pixbuf_new_from_file("images/macos.png")
+		#linux_icon = gtk.gdk.pixbuf_new_from_file("images/linux.png")
+		#self.os_list.append([osx_icon, 'Mac OS X', 'osx'])
+		#self.os_list.append([macos_icon, 'Mac OS', 'macos'])
+		#self.os_list.append([linux_icon, 'Linux', 'linux'])
 		self.os_box.set_model(self.os_list)
 		
 	#######################################################################
@@ -450,60 +459,61 @@ class MOL_GUI:
 	### Config OS
 	def add_os(self,w=None):
 		blah = CONFIG_OS(self)
+
+	### Delete OS
+	def del_os(self,w=None):
+		(model, iter)  = self.os_box.get_selection().get_selected()
+		if not iter:
+			self.del_warn_hide()
+			return
+		config_path = model.get_value(iter, 3)
+		print "Deleting profile %s" % config_path 
+		os.remove(config_path)
+		self.del_warn_hide()
+		### Refresh the list
+		self.get_os_list()
 	
+	### Delete profile prompt
+	def del_warn(self,w=None):
+		self.warning_window = self.gui.get_widget("warning_window")
+		self.warning_window.show()	
+
+	def del_warn_hide(self,w=None,blah=None):
+		self.warning_window.hide()
+		return True
+
 	### Boot button
 	def boot_chooser(self,w=None):
 		(model, iter)  = self.os_box.get_selection().get_selected()
 		if not iter:
 			return
+		### FIXME mol2
 		type = model.get_value(iter, 2)
 		if type == "osx":
-			self.boot_os_x()
+			self.add_opt('-X')
+			self.boot()
 		elif type == "macos":
-			self.boot_macos()
+			self.boot()
 		elif type == "linux":
-			self.boot_linux()
+			self.add_opt('--linux')
+			self.boot()
 
 	### CD Boot button
 	def cd_boot_chooser(self,w=None):
-		(model, iter)  = self.os_box.get_selection().get_selected()
-		if not iter:
-			return
-		type = model.get_value(iter, 2)
-		if type == "osx":
-			self.boot_os_x(cdrom=True)
-		elif type == "macos":
-			self.boot_macos(cdrom=True)
-		elif type == "linux":
-			self.boot_linux(cdrom=True)
+		self.add_opt('--cdboot')
+		self.boot_chooser()
 
 	### Boot OS X
-	def boot_os_x(self,w=None, cdrom=None):
+	def boot(self,w=None):
 		### Create boot mol thread object
-		os_x_boot = BOOT_MOL("osx")
-		if cdrom:
-			os_x_boot.cdrom = True
+		mol_boot = BOOT_MOL(self.molargs)
 		### State the thread
-		os_x_boot.start()
+		mol_boot.start()
+		### Don't forget to wipe the molargs
+		self.molargs = ""
 		### Keep track of active threads
 		### TODO find way to kill threads
 		# self.thread_track.append(os_x_boot)
-
-	### Boot Mac Classic
-	def boot_macos(self,w=None, cdrom=None):
-		macos_boot = BOOT_MOL()
-		if cdrom:
-			macos_boot.cdrom = True
-		macos_boot.start()
-		# self.thread_track.append(macos_boot)
-
-	### Boot Linux
-	def boot_linux(self,w=None, cdrom=None):
-		linux_boot = BOOT_MOL("linux")
-		if cdrom:
-			linux_boot.cdrom = True
-		linux_boot.start()
-		# self.thread_track(linux_boot)
 
 	### About MOL
 	def about_mol(self,w=None):
@@ -528,7 +538,7 @@ if __name__ == '__main__':
 
 ###
 # TODO
-# 'New' MOL
+# Pass profile path to mol binary instead of just type
 # Need a register of active threads
 # Need to find a way to alter BOOT_MOL handler names for multiple instances of
 #	one Guest-OS type
@@ -538,4 +548,5 @@ if __name__ == '__main__':
 # Remember last booted OS
 # QCOW Support
 # Error handling
+# Menu signals connect
 # Help text !!

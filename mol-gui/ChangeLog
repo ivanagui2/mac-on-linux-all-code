@@ -1,3 +1,15 @@
+2007-12-23 Nathan Smith <ndansmith@gmail.com>
+	* Happy Festivus!
+	* backend: Created MOLRC class for mol env info
+	* backend: Changed how BOOT_MOL class works
+	* GTK: Implemented new classes
+	* startmol: Implemented new classes
+
+2007-12-22 Nathan Smith <ndansmith@gmail.com>
+	* GTK: Delete profiles
+	* GTK: mol2 style
+	* GTK: menubar work
+
 2007-12-21 Nathan Smith <ndansmith@gmail.com>
 	* startmol: continued progress
 

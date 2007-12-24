@@ -40,16 +40,11 @@ class Startmol:
 		self.profiles = ""
 		self.molargs = ""
 
-		### MOL information
-		self.libdir = self.molrcget('-p')
-		self.bindir = self.libdir + "/bin/"
-		self.moddir = self.libdir + "/modules"
-		self.v = self.molrcget('-V')
-		self.kernel = status(self.bindir + 'mol_uname -p')
-		self.os = status('uname')
-
 		### Get the command-line arguments
 		self.parse_args()
+
+		### MOL information
+		self.molrc = MOLRC()
 
 		### Help dialog trumps
 		if (self.help):
@@ -90,10 +85,6 @@ class Startmol:
 		else:
 			self.start_gui()
 
-	### molrcget function
-	def molrcget(self, arg):
-		return status('molrcget ' + arg + ' --' + self.molargs)
-
 	### Display help text
 	def show_help(self):
 		self.help_text = """Usage: startmol [OPTIONS] <profile>
@@ -122,12 +113,11 @@ Commonly Used Switches:
        --keyconfig     start the keyboard configuration tool
  
 Configuration Tweaking:
-       --alt           use alternate configuration
-  -num --session=num   run as session <num>
-       --ram=size      RAM size (in megabytes)
-       --config=str    set the 'config' variable to str
-       --res=str       add molrc resource (root only)
-       --kernel=kernel Specify the linux kernel to be run by MOL
+  -n #, --session=#   run as session <#>
+        --ram=size      RAM size (in megabytes)
+        --config=str    set the 'config' variable to str
+        --res=str       add molrc resource (root only)
+        --kernel=kernel Specify the linux kernel to be run by MOL
  
 Miscellaneous:
   -h,  --help          display this help text and exit
@@ -150,7 +140,7 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 	### Argument parsing
 	def parse_args(self):
 		try:
-			self.opts, self.profiles = gnu_getopt(sys.argv[1:], "VXadeghmn:qx", ["alt","cdboot","config=","datadir=","debug","detach","elf=","exact","gtk","help","kernel=","keyconfig","libdir=","linux","list","macos","newworld","noautoboot","oldworld","osx","qt","ram=","res=","session=","test","version","vt=","zapnvram"])
+			self.opts, self.profiles = gnu_getopt(sys.argv[1:], "VXadeghmn:qx", ["cdboot","config=","datadir=","debug","detach","elf=","exact","gtk","help","kernel=","keyconfig","libdir=","linux","list","macos","newworld","noautoboot","oldworld","osx","qt","ram=","res=","session=","test","version","vt=","zapnvram"])
 		except GetoptError, e:
 			print "Error: %s." % e
 			print "Try startmol --help for assistance."
@@ -180,51 +170,49 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 			### Some mol options require formatting
 			elif option == "-n":
 				self.add_opt('-%s' % data)
-			elif option in ("--session","--ram","--config","--libdir","--vt"):
+			elif option in ("--session","--ram","--config","--vt","--res"):
 				self.add_opt('%s=%s' % (option,data))
 			### The arguments require an absolute path
-			elif option in ("--elf","--kernel"):
+			elif option in ("--elf","--kernel","--libdir","--datadir"):
 				abs_path = os.path.abspath(data)
 				self.add_opt('%s=%s' % (option,abs_path))
 			### Non startmol, non-argument options go to mol binary
 			else:
 				self.add_opt(option)
 
-	### Add options to molargs
+	### Add options to molargs to be passed to BOOT_MOL class (and then to mol binary)
 	def add_opt(self,opt):
+		# Each option is added to the molargs string with a separating space
+		# e.g. --cdboot -X -5
 		self.molargs += " %s" % opt
 
 	### Display verison information
 	def show_version(self):
-		print "Mac-on-Linux %s" % self.v
+		print "Mac-on-Linux %s" % self.molrc.version
 		print "Copyright (C) 1997-2003 Samuel Rydh <samuel@ibrium.se>"
 
 	### list kernel modules
 	def list_mods(self):
-		# Get lits of modules
-		self.mods = status(self.bindir + 'mol_uname -l ' + self.moddir + ' /usr/local/lib/mol/' + self.v + '/modules /lib/modules /usr/lib/mol/' + self.v + '/modules')
-		self.modules = self.mods.splitlines()
 		print "--------------------------------------------------------------"
-		print "  Running kernel:\t%s" % self.kernel
+		print "  Running kernel:\t%s" % self.molrc.kernel
 		print "--------------------------------------------------------------"
 		print "  Available modules:"
-		for each in self.modules:
+		for each in self.molrc.modules:
 			mod = each.rsplit('/modules/',1)
 			print "    %(module)s\tin %(path)s" % {'module': mod[-1], 'path': mod[0]}
 		print "--------------------------------------------------------------"
 
 	### Check for a lockfile
 	def check_lock(self):
-		self.lockfile = self.molrcget('-L')
-		if not os.path.exists(self.lockfile):
+		if not os.path.exists(self.molrc.lockfile):
 			return
 		### MOL is already running, abort!
 		else:
-			a = open(self.lockfile)
+			a = open(self.molrc.lockfile)
 			self.pid = a.read().strip()
 			a.close()	
 			print "Mac-on-Linux is already running with pid %s" % self.pid
-			print "according to the lockfile %s" % self.lockfile
+			print "according to the lockfile %s" % self.molrc.lockfile
 			sys.exit(1)
 
 	### Check for framebuffer information
@@ -239,9 +227,8 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 				print "Run 'mknod /dev/fb0 c 29 0' to create it"
 				sys.exit(1)
 		### Is console video configured?
-		if self.os == "Linux":
-			fbdev_prefs = self.molrcget('-F fbdev_prefs')
-			if not os.path.exists(fbdev_prefs):
+		if self.molrc.os == "Linux":
+			if not os.path.exists(self.molrc.fbdev_prefs):
 				print "*************************************************************"
 				print " No video modes have been configured. Please run 'molvconfig'"
 				print " as root to configure full screen video or disable console"
@@ -270,23 +257,21 @@ For more information, please visit <http://mac-on-linux.sourceforge.net>."""
 	### Run the MOL debugger
 	def debug_mol(self):
 		### Test for debug support first
-		self.mol_dbg = self.bindir + 'moldeb'
 		pass
 
 	### Grab all of the options and boot mol
 	### TODO finish this
 	def boot_mol(self):
-		self.mol_bin = self.bindir + 'mol'
-		self.mol_exec_string = (self.mol_bin + self.molargs)
-		### FIXME back to normal function
-		print self.mol_exec_string
-		os.system(self.mol_exec_string)
+		boot_mol = BOOT_MOL(self.molargs)
+		boot_mol.start()
+		#self.mol_exec_string = (self.molrc.mol_bin + self.molargs)
+		#os.system(self.mol_exec_string)
+		sys.exit(0)
 
 ### Start er up
 if __name__ == '__main__':
 	mol = Startmol()
 
 # TODO:
-# finish argparsing
 # debugging support
 # --datadir --libdir are br0ken

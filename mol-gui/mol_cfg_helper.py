@@ -3,8 +3,31 @@
 ###############################################################################
 ### Provide a backend for different frontends
 
-import os, commands
+import os
+from commands import getoutput
 from threading import Thread
+
+### Class to obtain information about the MOL environment
+class MOLRC:
+	def __init__(self):
+		# Initialize needed variables
+		self.libdir = self.molrcget('-p')
+		self.bindir = self.libdir + "/bin/"
+		self.moddir = self.libdir + "/modules"
+		self.version = self.molrcget('-V')
+		self.kernel = getoutput(self.bindir + 'mol_uname -p')
+		self.os = getoutput('uname')
+		self.mods = getoutput(self.bindir + 'mol_uname -l ' + self.moddir + ' /usr/local/lib/mol/' + self.version + '/modules /lib/modules /usr/lib/mol/' + self.version + '/modules')
+		self.modules = self.mods.splitlines()
+		self.fbdev_prefs = self.molrcget('-F fbdev_prefs')
+		self.mol_bin = self.bindir + 'mol'
+		self.mol_dbg = self.bindir + 'moldeb'
+		self.lockfile = self.molrcget('-L')
+
+	### molrcget function
+	def molrcget(self, arg):
+		return getoutput('molrcget ' + arg)
+
 
 ### Tracking mol sessions
 ### To be called by the UI to keep track of mol's activities
@@ -29,22 +52,22 @@ class BOOT_MOL(Thread):
 	### Boot MOL in a thread so GUI loop continues
 	### Import MOL tracker class object, id for this mol session, guest os
 	### type
-	def __init__(self, guest_os=None):
+	def __init__(self, molargs=None):
 		Thread.__init__(self)
-		if (guest_os):
-			self.os = " --" + guest_os
-		else:
-			self.os = ""
+		# These are the options which will be passed directly to the binary
+		# Each option is separated by a space like on the CLI
+		# e.g. --cdboot -X -5
+		self.molargs = molargs
+		# Obtain information about mol environment
+		self.molrc = MOLRC()
 		### Star MOL as a daemon so that quitting GUI does not kill it
 		### Once we can kill mol sessions externally, change this
 		self.setDaemon(1)	
-		self.cdrom = False
 
 	def run(self):
-		if self.cdrom:
-			os.system("startmol" + self.os + " --cdboot")
-		else:	
-			os.system("startmol" + self.os)
+		self.mol_exec_string = (self.molrc.mol_bin + self.molargs)
+		print "Starting MOL: %s" % self.mol_exec_string
+		os.system(self.mol_exec_string)
 		
 ### Volumes
 class MOL_Volume:
@@ -211,7 +234,7 @@ class MOL_OS:
 			buffer.append("newworld_rom:\t\t%s\n" % self.rom)
 		### Open and write the file
 		### TODO: need error handling here
-		if self.shared == 1:
+		if self.shared:
 			config_file = open('/etc/mol/profiles/' + self.name + '.' + self.type,'w')
 			for line in buffer:
 				config_file.write(line)
@@ -273,23 +296,28 @@ def mol_list_os():
 	### Shared configurations
 	for config in shared_configs:
 		### Split into name, type
+		path = '/etc/mol/profiles/' + config
 		new_os = config.split('.')
+		### Absolute path of profile
+		new_os.append(path)
 		### Add to list of bootable OSes
 		bootable_oses.append(new_os)
 	### Personal configurations
 	home = gethome()
 	user_configs = os.listdir(home + '/.mol')
 	for conf in user_configs:
+		### Name and type
+		home_path = home + '/.mol/' + conf
 		new_os = conf.split('.')
+		### Absolute path of profile
+		new_os.append(home_path)
 		bootable_oses.append(new_os)
 	### Return list of bootable OSes to the UI
 	return bootable_oses
 
 # Returns a string of the user's home direcotry
 def gethome():
-	raw_home = commands.getstatusoutput('echo $HOME')	# e.g. '/home/foo'
-	home = str(raw_home[1])
-	return home
+	return str(getoutput('echo $HOME'))
 
 ### Initialize ~/.mol directory
 home = gethome()
